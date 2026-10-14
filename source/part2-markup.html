@@ -1,0 +1,354 @@
+<a class="skip" href="#main">Skip to content</a>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="flash" id="flash" aria-hidden="true"></div>
+<div class="hud" id="hud" aria-hidden="true"><div class="frame"><i></i><i></i><i></i><i></i><span class="line"></span></div><div class="txt" id="hudtxt">Entering the portal</div></div>
+<div class="cur" id="cur" aria-hidden="true"><div class="ring"></div><div class="dot"></div><div class="lab" id="curlab">Flip</div></div>
+<button class="disc" id="disc" type="button" title="Things to try on this page"><span>✦</span><b id="discn">0</b><span>/ 9 found</span></button>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#home" data-route="home" aria-label="Portal Rewards home">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3ad0ff"/><stop offset="1" stop-color="#9a6bff"/></linearGradient></defs><circle cx="20" cy="20" r="17.5" fill="none" stroke="url(#lg)" stroke-width="2"/><path d="M15 29V11h6.2a5.4 5.4 0 0 1 0 10.8H15" fill="none" stroke="#f3f1fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><b>Portal Rewards</b><small>WHERE LOYALTY LIVES</small></span>
+    </a>
+    <nav class="nav-links" id="navlinks" aria-label="Page sections"></nav>
+    <div class="switch" role="group" aria-label="Choose your side">
+      <a class="c" href="#consumer" data-route="consumer" id="sw-c">Consumer</a>
+      <a class="b" href="#brand" data-route="brand" id="sw-b">Brands</a>
+    </div>
+    <button class="sound" id="sound" type="button" aria-pressed="false" aria-label="Turn sound on"><i><b></b><b></b><b></b><b></b></i><span>Sound off</span></button>
+    <button class="burger" id="burger" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <i class="prog" id="prog" aria-hidden="true"></i>
+  </div>
+</header>
+<div class="menu" id="menu" hidden></div>
+
+<main id="main">
+
+<!-- =============================== HOME =============================== -->
+<section class="page" data-page="home" id="page-home">
+  <div class="hero wrap" id="hero">
+    <div class="hero-copy">
+      <div class="slot coin-anchor" data-size=".9" data-size-m=".44" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it, use the arrow keys to spin it, or drag it with the pointer."><span class="toss" id="toss">HEADS</span></div>
+      <span class="hint hint-tap">Tap to flip · drag to spin</span>
+      <span class="eyebrow">Portal Rewards</span>
+      <h1 data-decode>Where loyalty <b>lives</b><em class="hu">.</em></h1>
+      <p class="lead">A loyalty platform built inside the product. Find the coin, scan it, and the brand you love finally gets to know you back.</p>
+      <div class="ctas">
+        <a class="btn c" href="#consumer" data-route="consumer" data-cursor="Enter">I'm a customer <span class="arr">↗</span></a>
+        <a class="btn b" href="#brand" data-route="brand" data-cursor="Build">I'm a brand <span class="arr">↗</span></a>
+      </div>
+      <span class="hint"><i></i>Scroll to look around</span>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="two-sides">
+    <div class="sec-head center rv">
+      <span class="eyebrow">One scan. Two sides.</span>
+      <h2>One coin. One connected relationship.</h2>
+      <p class="lead">The same coin works for the person holding the product and for the brand that made it. Pick your side and the portal takes you there.</p>
+    </div>
+    <div class="sides">
+      <a class="card side tilt c glow-c rv" href="#consumer" data-route="consumer" data-cursor="Enter">
+        <span class="orb"></span><span class="ringlet"></span>
+        <span class="eyebrow">For consumers</span>
+        <h3>Enter the <b>portal</b></h3>
+        <p class="lead">Scan QR coins. Earn rewards. Keep every coin you've earned, from every brand, in one app that never expires them.</p>
+        <span class="go">Explore consumer rewards <span class="arr">→</span></span>
+      </a>
+      <a class="card side tilt b glow-b rv" href="#brand" data-route="brand" data-cursor="Build">
+        <span class="orb"></span><span class="ringlet"></span>
+        <span class="eyebrow">For brands</span>
+        <h3>Build your <b>portal</b></h3>
+        <p class="lead">Know your customers. Own the relationship. Grow a named, reachable list of people who actually bought your product.</p>
+        <span class="go">Explore Portal for brands <span class="arr">→</span></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="ticker" aria-hidden="true"><div class="track"><span>Find the coin</span><span>Scan it</span><span>Earn rewards</span><span>Own the relationship</span><span>Find the coin</span><span>Scan it</span><span>Earn rewards</span><span>Own the relationship</span></div></div>
+
+  <div class="sec wrap" id="how-home">
+    <div class="sec-head rv">
+      <span class="eyebrow">How a coin works</span>
+      <h2>Three moments, <em class="hu">one</em> small coin.</h2>
+      <p class="lead">Try each one. The demos below react to your pointer or your tap.</p>
+    </div>
+    <div class="steps" data-demos></div>
+  </div>
+
+  <div class="sec wrap" id="story">
+    <div class="story">
+      <div class="rv">
+        <span class="clock">Tuesday · 6:40 pm</span>
+        <h2 style="margin-top:14px">Maya opens the bag. There's a <em>coin</em> inside. Ninety seconds later the roaster who made her coffee knows she exists.</h2>
+        <ol class="timeline" id="timeline">
+          <li class="on" data-step="0"><b>She finds the coin</b> tucked in the pouch, next to the beans.</li>
+          <li data-step="1"><b>She scans it</b> with her phone. No app store trip needed to start.</li>
+          <li data-step="2"><b>50 Brand Coins</b> land in her wallet. They never expire.</li>
+          <li data-step="3"><b>The roaster sees a real person</b>, not a wholesale invoice. Next drop, she hears first.</li>
+        </ol>
+      </div>
+      <div class="board rv" id="board" data-cursor="Draw"><button class="replay" type="button" id="replay">↻ Draw again</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== CONSUMER =============================== -->
+<section class="page" data-page="consumer" id="page-consumer">
+  <div class="hero2 wrap">
+    <div class="copy">
+      <span class="eyebrow" data-decode>For consumers</span>
+      <h1 data-decode>Scan it.<br>Earn it.<br><span class="own">Own it.</span></h1>
+      <p class="lead">A loyalty app you'd actually want on your phone: simple, rewarding, and built to turn every purchase into a reason to come back.</p>
+      <div class="ctas">
+        <a class="btn c" href="#contact" data-anchor="contact-consumer" data-cursor="Go">Get the app <span class="arr">↗</span></a>
+        <a class="btn ghost" href="#how" data-anchor="how-consumer">See how it works</a>
+      </div>
+      <div class="pill-list" aria-label="What you get"><span>No expiry</span><span>Every brand, one wallet</span><span>Single-use QR coins</span></div>
+    </div>
+    <div class="slot coin-anchor" data-size="1" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+  </div>
+
+  <div class="sec wrap" id="how-consumer">
+    <div class="sec-head rv">
+      <span class="eyebrow">How it works</span>
+      <h2>Find it. Scan it. <em class="hu">Keep</em> it.</h2>
+    </div>
+    <div class="steps" data-demos></div>
+  </div>
+
+  <div class="sec wrap" id="wallet">
+    <div class="show">
+      <div class="big-list rv" id="biglist"><span>Your brands</span><span>Your coins</span><span>Your rewards</span></div>
+      <div class="app rv" id="app">
+        <div class="top"><span>9:41</span><span>PORTAL</span></div>
+        <div class="tabs" role="tablist" aria-label="Coin type"><button type="button" class="on" data-tab="brand" role="tab" aria-selected="true">Brand Coins</button><button type="button" data-tab="portal" role="tab" aria-selected="false">Portal Coins</button></div>
+        <div class="list">
+          <div class="bal"><small id="bal-lab">Brand Coins · never expire</small><b id="bal">1,240</b></div>
+          <div class="brand-row"><span class="dot"></span><span><b>Northpine Roasters</b><small>Coffee · 3 scans</small></span><span>450</span></div>
+          <div class="brand-row"><span class="dot a"></span><span><b>Sundial Botanicals</b><small>Wellness · 2 scans</small></span><span>420</span></div>
+          <div class="brand-row"><span class="dot g"></span><span><b>Grove Supply Co.</b><small>Snacks · 4 scans</small></span><span>370</span></div>
+        </div>
+        <button class="cta" type="button" data-cursor="Redeem">Redeem a reward</button>
+      </div>
+      <div class="right rv">
+        <h2>These are <em class="hu">your</em> coins. They don't expire.</h2>
+        <p class="lead">Portal Coins work across the whole platform. Brand Coins are earned from one brand and spent with that brand. Both stay in your wallet for as long as you want them.</p>
+        <a class="btn pri" href="#contact" data-anchor="contact-consumer" data-cursor="Go">Get the app <span class="arr">↗</span></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="suggest">
+    <div class="sec-head rv">
+      <span class="eyebrow">Your brand should be here</span>
+      <h2>Which brand do you already buy and want on Portal?</h2>
+      <p class="lead">Tell us, and we'll go ask them. Every name on this list is a brand someone asked for.</p>
+    </div>
+    <form class="suggest rv" id="suggest-form" novalidate>
+      <div class="field"><label for="brand-name">Brand name</label>
+        <div class="inline"><input id="brand-name" name="brand" type="text" placeholder="e.g. Northpine Roasters" autocomplete="off" required><button class="btn pri" type="submit">Add it</button></div>
+        <div class="msg" id="brand-msg"></div>
+      </div>
+      <div class="chips" id="chips" aria-live="polite"></div>
+    </form>
+  </div>
+
+  <div class="sec wrap" id="contact-consumer"><div data-contact="consumer"></div></div>
+</section>
+
+<!-- =============================== BRAND =============================== -->
+<section class="page" data-page="brand" id="page-brand">
+  <div class="hero3 wrap">
+    <div class="side-copy">
+      <span class="eyebrow" data-decode>For brands</span>
+      <h1 data-decode>Your customers are buying your product. <span class="dim">Now you can actually</span> <em class="hu">know</em> them.</h1>
+      <p class="lead">Portal Rewards gives brands the direct customer channel that Google and Meta won't: a coin inside your packaging that turns every purchase into a named, reachable relationship.</p>
+      <div class="ctas">
+        <a class="btn b" href="#contact" data-anchor="contact-brand" data-cursor="Build">Build your portal <span class="arr">↗</span></a>
+        <a class="btn ghost" href="#calc" data-anchor="calc">Estimate your numbers</a>
+      </div>
+    </div>
+    <div class="slot coin-anchor" data-size="1" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+  </div>
+
+  <div class="sec wrap" id="problem">
+    <div class="problem">
+      <h2 class="rv">You made the sale. The retailer kept the <em class="hu">customer</em>.</h2>
+      <div class="rv" style="display:grid;gap:18px">
+        <p class="lead">Every unit you sell today creates a customer relationship, for someone else. The dispensary gets the name, the purchase history and the next sale. You get a wholesale invoice. Portal Rewards moves that relationship back to where it belongs: with the brand that earned it.</p>
+        <div class="pics" aria-hidden="true"><div class="box">YOUR<br>PRODUCT</div><div class="arrow"></div><div class="box">RETAILER<br>POS</div><div class="arrow"></div><div class="you">You, finally<br>in the loop</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="why">
+    <div class="args">
+      <div class="sticky rv">
+        <span class="eyebrow">Why a coin</span>
+        <h2>The channel they can't <em class="hu">switch off</em>.</h2>
+        <p class="lead">Three reasons brands put a coin inside the package instead of buying another impression.</p>
+        <div class="progress"><i id="argbar"></i></div>
+      </div>
+      <div style="display:grid;gap:16px" id="args">
+        <div class="arg tilt rv"><span class="num">01</span><h3>Stop handing your customers to the POS</h3>
+          <div class="pic"><div class="flowline"></div><img class="c2 coin-face" alt="" aria-hidden="true"></div>
+          <p>Every purchase of your product generates first-party data right now. You just don't receive it. A coin inside the package reroutes that moment: the customer scans, enters your portal and identifies themselves to you, verified by the product in their hand, not a guess from a budtender's system.</p>
+          <p class="kicker">Your product already reaches the customer. Now your brand does too.</p></div>
+        <div class="arg tilt rv"><span class="num">02</span><h3>Your packaging is the only ad placement you're allowed</h3>
+          <div class="pic"><svg class="pouch" viewBox="0 0 120 170" data-pouch></svg></div>
+          <p>No Google. No Meta. No billboards near a school. But the inside of your own bag? Unrestricted, unbannable, and already in your customer's hands at the exact moment they like you most. The coin turns that placement into currency they can actually spend with you.</p>
+          <p class="kicker">The one ad channel no platform can shut off.</p></div>
+        <div class="arg tilt rv"><span class="num">03</span><h3>Every month without a channel is a month of customers you can't name</h3>
+          <div class="pic"><div class="pics" style="width:80%"><div class="box">SCAN<br>#0412</div><div class="arrow"></div><div class="box">SCAN<br>#0413</div><div class="arrow"></div><div class="you">A list<br>you own</div></div></div>
+          <p>You can't retarget a customer you can't identify. You can't reward loyalty you can't see. Every verified scan builds the asset your competitors don't have: a named, reachable list of people who provably bought your product. That's the foundation for launches, drops and repeat revenue you control.</p>
+          <p class="kicker">Start owning the list. Not renting the shelf.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="compare">
+    <div class="sec-head rv">
+      <span class="eyebrow">Before and after</span>
+      <h2>Only retailers know who buys your brand. <em class="hu">Until now.</em></h2>
+      <p class="lead">Hover a line to see what changes. Click a problem to fix it.</p>
+    </div>
+    <div class="cmp" id="cmp">
+      <div class="card col no rv"><span class="tag">Without Portal Rewards</span>
+        <div class="li" data-i="0"><i>✕</i>Retailers own all customer data</div>
+        <div class="li" data-i="1"><i>✕</i>You're invisible after the sale</div>
+        <div class="li" data-i="2"><i>✕</i>Google &amp; Meta charge per impression</div>
+        <div class="li" data-i="3"><i>✕</i>Zero repeat-purchase attribution</div>
+        <div class="li" data-i="4"><i>✕</i>Brand loyalty? Whoever holds the POS</div></div>
+      <div class="card col yes rv"><span class="tag">With Portal Rewards</span>
+        <div class="li" data-i="0"><i>✓</i>You own a direct channel to every customer</div>
+        <div class="li" data-i="1"><i>✓</i>Every scan is a verified buyer identity</div>
+        <div class="li" data-i="2"><i>✓</i>Zero CPM. Zero algorithm dependency</div>
+        <div class="li" data-i="3"><i>✓</i>A lifetime relationship, not a transaction</div>
+        <div class="li" data-i="4"><i>✓</i>Your portal. Your data. Always.</div></div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="calc">
+    <div class="sec-head rv">
+      <span class="eyebrow">Estimate</span>
+      <h2>What a coin is worth to <em class="hu">you</em>.</h2>
+      <p class="lead">Move the sliders. This is a simple what-if, not a promise: the inputs are yours, the arithmetic is shown.</p>
+    </div>
+    <div class="calc">
+      <div class="card inputs rv">
+        <div class="range"><div class="lab"><span>Units you sell per month</span><b id="o-units">20,000</b></div><input id="r-units" type="range" min="1000" max="200000" step="1000" value="20000" aria-label="Units per month"></div>
+        <div class="range"><div class="lab"><span>Customers who scan the coin</span><b id="o-scan">35%</b></div><input id="r-scan" type="range" min="5" max="80" step="1" value="35" aria-label="Scan rate"></div>
+        <div class="range"><div class="lab"><span>Scanners who buy again within 90 days</span><b id="o-repeat">12%</b></div><input id="r-repeat" type="range" min="1" max="50" step="1" value="12" aria-label="Repeat rate"></div>
+        <div class="range"><div class="lab"><span>Average order value</span><b id="o-aov">$38</b></div><input id="r-aov" type="range" min="10" max="200" step="1" value="38" aria-label="Average order value"></div>
+      </div>
+      <div class="outs rv">
+        <div class="out"><small>Named customers per month</small><b id="c-named">7,000</b><span class="note">units × scan rate</span></div>
+        <div class="out"><small>Repeat orders you can attribute</small><b id="c-orders">840</b><span class="note">named customers × repeat rate</span></div>
+        <div class="out hi"><small>Revenue you can trace to the coin, per month</small><b id="c-rev">$31,920</b><span class="note">repeat orders × average order</span></div>
+        <div class="out"><small>Over a year</small><b id="c-year">$383,040</b><span class="note">before coin and plan costs</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="token">
+    <div class="token">
+      <div class="slot coin-anchor" data-size=".95" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+      <div style="display:grid;gap:18px" class="rv">
+        <span class="eyebrow">The token</span>
+        <h2>Not a sticker. Not a punch card. <span class="dim">A collectible that</span> <em class="hu">pays off</em>.</h2>
+        <p class="lead">A 1.25" blockchain-secured, single-use QR token. Batch numbered, collectible by design, and compatible with every packaging format, from bags to boxes to mailers.</p>
+        <div class="sw" role="group" aria-label="Colorway">
+          <button type="button" class="onyx on" data-color="onyx"><i></i>Onyx</button>
+          <button type="button" class="amber" data-color="amber"><i></i>Amber</button>
+          <button type="button" class="nova" data-color="nova"><i></i>Nova</button>
+        </div>
+        <div class="specs">
+          <div><small>Size</small><b>1.25" diameter</b></div><div><small>Colorways</small><b>Onyx · Amber · Nova</b></div>
+          <div><small>Security</small><b>Blockchain-secured</b></div><div><small>Use</small><b>Single-use QR scan</b></div>
+          <div><small>Format</small><b>Any packaging type</b></div><div><small>Numbering</small><b>Batch numbered</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="pricing">
+    <div class="sec-head rv">
+      <span class="eyebrow">Pricing</span>
+      <h2>Simple pricing. Real <em class="hu">ROI</em>.</h2>
+      <p class="lead">Start with one portal and grow. Yearly plans are available when you talk to us.</p>
+    </div>
+    <div class="plans">
+      <div class="card plan tilt rv"><span class="name">Starter</span><span class="price">Custom <small>quote</small></span><p>For a first product line and a first portal.</p>
+        <ul><li>1 brand portal</li><li>Basic analytics</li><li>3 colorways included</li><li>Email support</li></ul>
+        <a class="btn" href="#contact" data-anchor="contact-brand">Talk to us <span class="arr">↗</span></a></div>
+      <div class="card plan tilt pop rv"><span class="badge">Most popular</span><span class="name">Growth</span><span class="price">$749 <small>/ month</small></span><p>For scaling brands that want real customer relationships.</p>
+        <ul><li>Up to 25,000 coins a month</li><li>3 brand portals</li><li>Advanced analytics &amp; CRM</li><li>Custom coin branding</li><li>Loyalty campaign tools</li></ul>
+        <a class="btn b" href="#contact" data-anchor="contact-brand" data-cursor="Start">Start free trial <span class="arr">↗</span></a></div>
+      <div class="card plan tilt rv"><span class="name">Pro</span><span class="price">Let's <small>talk</small></span><p>For multi-state operators and high-volume brands.</p>
+        <ul><li>Unlimited coins and portals</li><li>Full API access</li><li>Dedicated account manager</li><li>White-label portal</li></ul>
+        <a class="btn" href="#contact" data-anchor="contact-brand">Contact sales <span class="arr">↗</span></a></div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="contact-brand"><div data-contact="brand"></div></div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#home" data-route="home"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17.5" fill="none" stroke="url(#lg)" stroke-width="2"/><path d="M15 29V11h6.2a5.4 5.4 0 0 1 0 10.8H15" fill="none" stroke="#f3f1fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Portal Rewards</b></span></a>
+    <div class="links"><a href="#consumer" data-route="consumer">Consumers</a><a href="#brand" data-route="brand">Brands</a><a href="#pricing" data-route="brand" data-anchor="pricing">Pricing</a><a href="#contact" data-route="brand" data-anchor="contact-brand">Contact</a><a href="https://portalrewards.com" target="_blank" rel="noopener">portalrewards.com ↗</a><span>Privacy policy</span><span>Terms</span></div>
+    <button class="again" type="button" id="again">Experience again</button>
+  </div>
+  <div class="wrap" style="margin-top:22px"><small>© 2026 Portal Rewards. Redesign prototype: forms don't send yet, and the brands in the wallet demo are examples.</small></div>
+</footer>
+
+<template id="demo-tpl">
+  <div class="card step tilt rv">
+    <div class="num"><span>01</span><span>FIND</span></div>
+    <h3>Find the coin inside your product</h3>
+    <p>It ships in the bag, box or mailer, right next to the thing you bought. Hover or tap the pouch to open it.</p>
+    <div class="demo find" data-cursor="Open" role="button" tabindex="0" aria-label="Open the pouch"><svg class="pouch" viewBox="0 0 120 170" data-pouch></svg><div class="pocket"><img class="c2 coin-face" alt=""></div><span class="state">Closed · tap to open</span></div>
+  </div>
+  <div class="card step tilt rv">
+    <div class="num"><span>02</span><span>SCAN</span></div>
+    <h3>Scan the coin from your phone</h3>
+    <p>Point the camera at the QR on the coin. One scan, single use, verified by the product in your hand. Tap the phone to scan.</p>
+    <div class="demo scan" data-cursor="Scan" role="button" tabindex="0" aria-label="Scan the coin"><div class="phone"><div class="cam"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span><img class="c2 coin-face" alt=""><div class="beam"></div></div><div class="label">Scan the coin</div><div class="shutter"><svg viewBox="0 0 58 58"><circle class="track" cx="29" cy="29" r="27"/><circle class="fill" cx="29" cy="29" r="27"/></svg></div></div><div class="toast">+50 Brand Coins</div><span class="state">Ready · tap to scan</span></div>
+  </div>
+  <div class="card step tilt rv">
+    <div class="num"><span>03</span><span>EARN</span></div>
+    <h3>Earn coins &amp; redeem rewards</h3>
+    <p>Coins land in your wallet and stay there. Spend them on the next drop, a discount, or something you can't buy. Tap redeem.</p>
+    <div class="demo earn" data-cursor="Redeem"><div class="wallet"><div class="row"><span>Brand Coins</span><span>Northpine Roasters</span></div><b class="big" data-count="1240">1,240</b><div class="bar"><i></i></div><div class="row"><span>Next reward at 1,500</span><span class="left">260 to go</span></div><button class="redeem" type="button">Redeem 500 coins</button></div></div>
+  </div>
+</template>
+
+<template id="contact-tpl">
+  <div class="contact">
+    <div class="rv" style="display:grid;gap:18px">
+      <span class="eyebrow">Let's talk</span>
+      <h2>Let's build your custom portal <em class="hu">today</em>.</h2>
+      <p class="lead">Join the brands using Portal Rewards to own their customer relationships, turn every product into a touchpoint, and build loyalty that lasts beyond the first purchase.</p>
+      <p class="note">Prefer email? <b style="color:var(--ink);user-select:all">hello@portalrewards.com</b> <button type="button" class="btn sm ghost" data-copy="hello@portalrewards.com">Copy</button></p>
+    </div>
+    <form class="card form rv" novalidate>
+      <div class="two">
+        <div class="field"><label>Contact name</label><input name="name" type="text" autocomplete="name" required><div class="msg"></div></div>
+        <div class="field"><label>Email</label><input name="email" type="email" autocomplete="email" required><div class="msg"></div></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Phone</label><input name="phone" type="tel" autocomplete="tel"><div class="msg"></div></div>
+        <div class="field"><label>State</label><input name="state" type="text" autocomplete="address-level1" required><div class="msg"></div></div>
+      </div>
+      <div class="field"><label>Message</label><textarea name="message" placeholder="What are you selling, and where?"></textarea><div class="msg"></div></div>
+      <button class="btn pri" type="submit" style="justify-content:center">Get started <span class="arr">↗</span></button>
+      <div class="ok" hidden></div>
+    </form>
+  </div>
+</template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>

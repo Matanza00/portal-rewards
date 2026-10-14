@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07060b">
+</head>
+<body style="margin:0">
+<title>Portal Rewards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@1&family=DM+Mono:wght@400;500&family=Caveat:wght@600&display=swap">
+<style>
+/* Layout: a fixed WebGL canvas (portal tunnel, stars, the coin) sits behind one visible "page" at a time; the coin is
+   anchored to invisible slots in the page so it travels with the scroll. Picking a side flies the camera through the portal. */
+:root {
+  --bg: #07060b; --bg-2: #0e0d16; --bg-3: #16141f; --ink: #f3f1fa; --ink-2: #c0bad4; --ink-3: #8f89a6;
+  --violet: #9a6bff; --violet-2: #c6abff; --cyan: #3ad0ff; --cyan-2: #9be9ff; --lav: #8e8cf6; --amber: #ffb070; --green: #7ef0b0; --red: #ff7a90;
+  --line: rgba(255, 255, 255, .09); --line-2: rgba(255, 255, 255, .17); --glass: rgba(14, 13, 22, .72);
+  --f-display: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif; --f-serif: "Instrument Serif", Georgia, "Times New Roman", serif; --f-mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace; --f-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --nav: 72px; --r: 16px; --ease: cubic-bezier(.2, .7, .2, 1);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--f-display); -webkit-font-smoothing: antialiased; overflow-x: clip; cursor: default; }
+body.fine, body.fine a, body.fine button, body.fine input, body.fine label { cursor: none; }
+h1, h2, h3, h4, p { margin: 0; }
+h1, h2, h3 { font-weight: 700; letter-spacing: -.03em; line-height: 1.02; text-wrap: balance; }
+h1 { font-size: clamp(42px, 7.4vw, 104px); font-weight: 800; }
+h2 { font-size: clamp(32px, 4.6vw, 60px); }
+h3 { font-size: clamp(20px, 2vw, 26px); letter-spacing: -.02em; line-height: 1.2; }
+em.hu { font-family: var(--f-serif); font-style: italic; font-weight: 400; letter-spacing: 0; color: var(--violet-2); }
+.eyebrow { display: inline-flex; align-items: center; gap: 10px; font: 500 11px/1 var(--f-mono); letter-spacing: .28em; text-transform: uppercase; color: var(--ink-3); }
+.eyebrow::before { content: ""; width: 22px; height: 1px; background: linear-gradient(90deg, var(--cyan), var(--violet)); }
+.lead { font-size: clamp(17px, 1.35vw, 20px); color: var(--ink-2); max-width: 56ch; text-wrap: pretty; }
+.wrap { width: 100%; max-width: 1240px; margin-inline: auto; padding-inline: clamp(16px, 4vw, 48px); }
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+img { max-width: 100%; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+#gl.off { display: none; }
+main { position: relative; z-index: 1; transition: transform .6s var(--ease), opacity .5s, filter .5s; transform-origin: 50% 40%; }
+body.warp main { transform: scale(1.08); opacity: 0; filter: blur(6px); }
+.page { display: none; }
+.page.on { display: block; }
+
+/* ---------- nav ---------- */
+.nav { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 40; height: var(--nav); display: flex; align-items: center; background: linear-gradient(180deg, rgba(7, 6, 11, .9), rgba(7, 6, 11, .55)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 18px; }
+.nav .prog { position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%; transform-origin: left; transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--cyan), var(--violet)); }
+.logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; letter-spacing: -.01em; }
+.logo svg { width: 34px; height: 34px; transition: transform .5s var(--ease); }
+.logo:hover svg { transform: rotate(14deg); }
+.logo span { white-space: nowrap; }
+.logo small { display: block; font: 500 10px/1 var(--f-mono); letter-spacing: .22em; color: var(--ink-3); margin-top: 3px; }
+.nav-links { display: flex; gap: 4px; margin-inline: auto; }
+.nav-links a { font-size: 14px; font-weight: 500; color: var(--ink-2); text-decoration: none; padding: 8px 12px; border-radius: 999px; transition: color .2s, background .2s; }
+.nav-links a:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+.switch { display: inline-flex; padding: 3px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(255, 255, 255, .03); }
+.switch a { position: relative; z-index: 1; font: 600 12px/1 var(--f-display); letter-spacing: .06em; text-transform: uppercase; padding: 9px 14px; border-radius: 999px; text-decoration: none; color: var(--ink-2); transition: color .25s; }
+.switch a.on { color: #0b0a12; }
+.switch a.on.c { background: var(--cyan); } .switch a.on.b { background: var(--violet-2); }
+.sound { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line-2); background: transparent; color: var(--ink-2); font: 600 11px/1 var(--f-mono); letter-spacing: .16em; text-transform: uppercase; }
+.sound i { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.sound i b { width: 2px; height: 4px; background: currentColor; border-radius: 1px; transform-origin: bottom; }
+.sound.on { color: var(--cyan-2); border-color: rgba(58, 208, 255, .5); }
+.sound.on i b { animation: eq 1s ease-in-out infinite; }
+.sound.on i b:nth-child(2) { animation-delay: .15s; } .sound.on i b:nth-child(3) { animation-delay: .3s; } .sound.on i b:nth-child(4) { animation-delay: .45s; }
+@keyframes eq { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(3); } }
+.burger { display: none; width: 40px; height: 40px; border: 1px solid var(--line-2); border-radius: 999px; background: transparent; }
+.burger span { display: block; width: 16px; height: 2px; margin: 3px auto; background: var(--ink); border-radius: 2px; }
+@media (max-width: 900px) { .nav .wrap { gap: 10px; } .nav-links { display: none; } .burger { display: block; } .switch { margin-left: auto; } .switch a { padding: 8px 10px; font-size: 11px; } .sound span { display: none; } .sound { width: 36px; padding: 0; justify-content: center; } .logo span { display: none; } }
+.menu { position: fixed; top: calc(var(--nav) + env(safe-area-inset-top, 0px)); left: 0; right: 0; z-index: 39; background: var(--glass); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid var(--line); padding: 12px 16px 18px; display: grid; gap: 4px; }
+.menu[hidden] { display: none; }
+.menu a { padding: 12px 10px; border-radius: 10px; text-decoration: none; font-weight: 600; color: var(--ink-2); }
+.menu a:hover { background: rgba(255, 255, 255, .06); color: var(--ink); }
+
+/* ---------- buttons ---------- */
+.btn { position: relative; display: inline-flex; align-items: center; gap: 10px; height: 50px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .04); color: var(--ink); font-weight: 600; font-size: 15px; text-decoration: none; letter-spacing: -.005em; transition: transform .25s var(--ease), background .25s, border-color .25s, box-shadow .25s; will-change: transform; }
+.btn:hover { background: rgba(255, 255, 255, .09); border-color: rgba(255, 255, 255, .3); }
+.btn.pri { background: var(--ink); color: #0b0a12; border-color: transparent; box-shadow: 0 10px 30px -14px rgba(154, 107, 255, .6); }
+.btn.pri:hover { background: #fff; box-shadow: 0 16px 40px -14px rgba(154, 107, 255, .9); }
+.btn.c { background: linear-gradient(135deg, var(--cyan), #6cb8ff); color: #061018; border-color: transparent; }
+.btn.b { background: linear-gradient(135deg, var(--violet), #c58cff); color: #140a26; border-color: transparent; }
+.btn .arr { transition: transform .25s var(--ease); } .btn:hover .arr { transform: translate(3px, -3px); }
+.btn.sm { height: 42px; padding: 0 16px; font-size: 14px; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-2); } .btn.ghost:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+.btn.press { transform: scale(.97); }
+
+/* ---------- hero (home) ---------- */
+.hero { position: relative; min-height: calc(100svh - var(--nav)); padding-top: calc(var(--nav) + 4vh); display: grid; place-items: end center; text-align: center; padding-bottom: 36px; }
+.hero .slot { width: min(40vw, 340px); aspect-ratio: 1; border-radius: 50%; outline-offset: 10px; }
+@media (min-width: 700px) { .hero .slot { position: absolute; left: 50%; top: calc(var(--nav) + (100svh - var(--nav)) * .34); transform: translate(-50%, -50%); width: min(30vw, 290px); } }
+@media (max-width: 699px) { .hero .slot { width: min(86vw, 380px); } }
+.hero::before { content: ""; position: absolute; left: 50%; bottom: 0; width: min(1100px, 100%); height: 56%; transform: translateX(-50%); pointer-events: none; background: radial-gradient(50% 62% at 50% 64%, rgba(7, 6, 11, .86), rgba(7, 6, 11, .6) 48%, transparent 76%); }
+.hero-copy > *:not(.slot) { position: relative; }
+@media (min-width: 700px) { .hero-copy > .eyebrow, .hero-copy > .hint-tap { display: none !important; } }
+.hero-copy h1, .hero-copy .lead, .hero-copy .eyebrow, .hero-copy .hint { text-shadow: 0 2px 28px rgba(7, 6, 11, .95), 0 0 3px rgba(7, 6, 11, .7); }
+.hint-tap { display: none; } body:not(.fine) .hint-tap { display: inline-flex; margin-top: -6px; }
+.hero-copy { display: grid; gap: 18px; justify-items: center; max-width: 860px; padding-bottom: 12px; }
+.hero-copy h1 { font-weight: 300; letter-spacing: -.035em; }
+.hero-copy h1 b { font-weight: 800; }
+.hero-copy .lead { text-align: center; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 6px; }
+.hint { display: inline-flex; gap: 12px; align-items: center; font: 500 11px/1 var(--f-mono); letter-spacing: .3em; text-transform: uppercase; color: var(--ink-3); margin-top: 14px; }
+.hint i { width: 1px; height: 28px; background: linear-gradient(var(--lav), transparent); }
+.toss { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font: 600 13px/1 var(--f-mono); letter-spacing: .2em; color: var(--amber); pointer-events: none; opacity: 0; }
+.toss.show { animation: tossUp 1.3s var(--ease) forwards; }
+@keyframes tossUp { 0% { opacity: 0; transform: translate(-50%, -30%); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -180%); } }
+
+/* ---------- generic sections ---------- */
+.sec { position: relative; padding-block: clamp(64px, 9vw, 120px); }
+.sec-head { display: grid; gap: 14px; max-width: 760px; margin-bottom: clamp(28px, 4vw, 52px); }
+.sec-head.center { text-align: center; margin-inline: auto; justify-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.card { position: relative; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(255, 255, 255, .015)); border-radius: var(--r); padding: 26px; min-width: 0; }
+.tilt { transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px)); transition: transform .35s var(--ease), border-color .4s; }
+.rv { transition: transform .9s var(--ease), opacity .9s var(--ease); transform: translateY(18px); opacity: .55; }
+.rv.in { transform: none; opacity: 1; }
+.glow-c { box-shadow: inset 0 0 0 1px rgba(58, 208, 255, .18), 0 30px 80px -50px rgba(58, 208, 255, .55); }
+.glow-b { box-shadow: inset 0 0 0 1px rgba(154, 107, 255, .22), 0 30px 80px -50px rgba(154, 107, 255, .6); }
+
+/* two sides */
+.sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+@media (max-width: 900px) { .sides { grid-template-columns: minmax(0, 1fr); } }
+.side { display: grid; gap: 14px; padding: clamp(24px, 3vw, 40px); min-height: 360px; align-content: end; text-decoration: none; color: inherit; overflow: hidden; isolation: isolate; }
+.side:hover { --ty: -4px; border-color: var(--line-2); }
+.side .orb { position: absolute; width: 360px; height: 360px; border-radius: 50%; filter: blur(70px); opacity: .35; z-index: -1; right: -120px; top: -140px; transition: opacity .5s, transform .8s var(--ease); }
+.side:hover .orb { opacity: .6; transform: scale(1.15); }
+.side.c .orb { background: var(--cyan); } .side.b .orb { background: var(--violet); }
+.side h3 { font-size: clamp(28px, 3vw, 40px); font-weight: 300; letter-spacing: -.03em; }
+.side h3 b { font-weight: 800; }
+.side .go { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; margin-top: 6px; }
+.side.c .go { color: var(--cyan-2); } .side.b .go { color: var(--violet-2); }
+.side .arr { transition: transform .3s var(--ease); } .side:hover .arr { transform: translateX(6px); }
+.side .ringlet { position: absolute; right: 26px; top: 26px; width: 64px; height: 64px; border-radius: 50%; border: 2px solid currentColor; opacity: .35; transition: transform .8s var(--ease), opacity .5s; }
+.side:hover .ringlet { transform: scale(1.25) rotate(90deg); opacity: .8; }
+.side.c .ringlet { color: var(--cyan); } .side.b .ringlet { color: var(--violet-2); }
+
+/* how it works */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 900px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+.step { display: grid; grid-template-rows: auto auto 1fr; gap: 18px; padding: 20px; }
+.step .num { font: 500 11px/1 var(--f-mono); letter-spacing: .26em; color: var(--ink-3); display: flex; justify-content: space-between; }
+.step h3 { font-size: 22px; }
+.step p { color: var(--ink-2); font-size: 15px; }
+.demo { position: relative; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: radial-gradient(120% 90% at 50% 100%, rgba(154, 107, 255, .12), transparent 60%), #0b0a12; overflow: hidden; display: grid; place-items: center; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.coin2d { width: 100%; height: 100%; border-radius: 50%; display: block; box-shadow: 0 20px 40px -20px rgba(0, 0, 0, .8); }
+.c2 { position: absolute; width: 38%; aspect-ratio: 1; }
+.demo .state { position: absolute; left: 12px; bottom: 10px; font: 500 10px/1 var(--f-mono); letter-spacing: .24em; text-transform: uppercase; color: var(--ink-3); transition: color .3s; }
+.demo.open .state, .demo.go .state { color: var(--green); }
+/* step 1: the pouch (SVG) with the coin rising out of its pocket */
+.demo.find svg.pouch { position: absolute; left: 50%; bottom: 0; width: 60%; height: 92%; transform: translateX(-50%); overflow: visible; }
+.demo.find .pocket { position: absolute; left: 50%; bottom: 12%; width: 60%; height: 74%; transform: translateX(-50%); overflow: hidden; pointer-events: none; }
+.demo.find .pocket .c2 { position: absolute; left: 50%; top: 38%; width: 58%; transform: translate(-50%, 0) rotate(-10deg); transition: transform .8s var(--ease), filter .8s; filter: brightness(.55); }
+.demo.find.open .pocket .c2 { transform: translate(-50%, -78%) rotate(4deg); filter: brightness(1) drop-shadow(0 0 18px rgba(154, 107, 255, .7)); }
+.demo.find .flap { transform-origin: 50% 100%; transition: transform .7s var(--ease); }
+.demo.find.open .flap { transform: translateY(-14px) rotate(-6deg); }
+.demo.find .zip { stroke-dasharray: 160; stroke-dashoffset: 0; transition: stroke-dashoffset .7s var(--ease); }
+.demo.find.open .zip { stroke-dashoffset: 160; }
+.demo.find .beans { opacity: 0; transition: opacity .4s .3s; } .demo.find.open .beans { opacity: 1; }
+.demo.find .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); opacity: 0; pointer-events: none; }
+/* step 2: the phone scan */
+.phone { position: relative; width: 44%; aspect-ratio: 9 / 16; max-height: 86%; border-radius: 22px; background: #0a0912; border: 2px solid #2b2740; box-shadow: 0 30px 70px -30px #000, inset 0 0 0 1px rgba(255, 255, 255, .06); overflow: hidden; }
+.phone::before { content: ""; position: absolute; top: 8px; left: 50%; width: 36%; height: 8px; transform: translateX(-50%); border-radius: 6px; background: #000; }
+.phone .cam { position: absolute; inset: 14% 10% 30%; border-radius: 10px; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, rgba(58, 208, 255, .12), transparent 60%); }
+.phone .cam .c2 { position: static; width: 70%; }
+.phone .corner { position: absolute; width: 16px; height: 16px; border: 2px solid var(--cyan); transition: transform .4s var(--ease); }
+.demo.go .phone .corner { transform: scale(.85); }
+.phone .corner.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 6px 0 0 0; } .phone .corner.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 6px 0 0; }
+.phone .corner.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 6px; } .phone .corner.br { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 6px 0; }
+.phone .beam { position: absolute; left: 6%; right: 6%; top: 20%; height: 2px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); box-shadow: 0 0 18px 4px rgba(58, 208, 255, .45); opacity: 0; }
+.phone .label { position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font: 500 10px/1 var(--f-mono); letter-spacing: .22em; color: var(--ink-3); text-transform: uppercase; }
+.phone .shutter { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); width: 58px; height: 58px; display: grid; place-items: center; }
+.phone .shutter::after { content: ""; width: 40px; height: 40px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.demo.go .phone .shutter::after { transform: scale(.85); }
+.phone .shutter svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.phone .shutter circle { fill: none; stroke-width: 3; }
+.phone .shutter .track { stroke: rgba(255, 255, 255, .25); }
+.phone .shutter .fill { stroke: var(--cyan); stroke-dasharray: 170; stroke-dashoffset: 170; }
+.demo.go .phone .shutter .fill { animation: ring 2.2s linear forwards; }
+@keyframes ring { to { stroke-dashoffset: 0; } }
+.demo.go .beam { opacity: 1; animation: beam 1.1s var(--ease) 2; }
+@keyframes beam { 0% { top: 16%; } 100% { top: 84%; } }
+.toast { position: absolute; left: 50%; top: 12px; transform: translate(-50%, -24px); background: rgba(126, 240, 176, .14); border: 1px solid rgba(126, 240, 176, .5); color: var(--green); font: 600 12px/1 var(--f-mono); letter-spacing: .08em; padding: 10px 14px; border-radius: 999px; opacity: 0; transition: transform .5s var(--ease), opacity .4s; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+/* step 3: wallet */
+.wallet { width: 72%; border-radius: 16px; background: linear-gradient(160deg, #19152a, #0d0b16); border: 1px solid var(--line-2); padding: 16px; display: grid; gap: 10px; }
+.wallet .row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink-2); }
+.wallet .big { font-size: 34px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--ink); }
+.wallet .bar { height: 6px; border-radius: 4px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.wallet .bar i { display: block; height: 100%; width: 40%; background: linear-gradient(90deg, var(--cyan), var(--violet)); transition: width .8s var(--ease); }
+.wallet .redeem { height: 38px; border-radius: 10px; border: 0; background: var(--ink); color: #0b0a12; font-weight: 700; font-size: 13px; }
+.fly { position: absolute; width: 26px; height: 26px; border-radius: 50%; pointer-events: none; will-change: transform, opacity; }
+
+/* story: the timeline and the hand-drawn storyboard */
+.story { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(24px, 5vw, 64px); align-items: center; }
+@media (max-width: 900px) { .story { grid-template-columns: minmax(0, 1fr); } }
+.story .clock { font: 500 12px/1 var(--f-mono); letter-spacing: .26em; color: var(--amber); text-transform: uppercase; }
+.story h2 { font-weight: 400; font-size: clamp(24px, 2.6vw, 36px); line-height: 1.15; letter-spacing: -.02em; }
+.story h2 em { color: var(--amber); }
+.timeline { display: grid; border-left: 1px solid var(--line-2); margin: 18px 0 0 8px; padding: 0; }
+.timeline li { list-style: none; position: relative; padding: 12px 0 12px 26px; color: var(--ink-2); cursor: pointer; border-radius: 0 10px 10px 0; transition: background .3s; }
+.timeline li:hover { background: rgba(255, 255, 255, .04); }
+.timeline li::before { content: ""; position: absolute; left: -5px; top: 20px; width: 9px; height: 9px; border-radius: 50%; background: var(--bg); border: 2px solid var(--lav); transition: background .3s, transform .3s; }
+.timeline li.on::before { background: var(--amber); border-color: var(--amber); transform: scale(1.3); }
+.timeline li b { display: block; color: var(--ink); font-weight: 600; }
+.board { position: relative; border-radius: var(--r); border: 1px solid var(--line); background: #0b0a12; aspect-ratio: 8 / 5.6; max-width: 100%; overflow: hidden; }
+.board svg { display: block; width: 100%; height: 100%; }
+.board .sk { fill: none; stroke: #ece9f5; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.board .sk.am { stroke: var(--amber); } .board .sk.vi { stroke: var(--violet-2); } .board .sk.cy { stroke: var(--cyan); } .board .sk.dim { stroke: #5a5570; stroke-dasharray: 4 6; }
+.board .hw { font-family: var(--f-hand); font-weight: 600; fill: #ece9f5; } .board .hw.am { fill: var(--amber); } .board .hw.cy { fill: var(--cyan-2); }
+.board .pane { fill: rgba(255, 255, 255, .025); stroke: rgba(255, 255, 255, .08); }
+.board .replay { position: absolute; right: 12px; bottom: 12px; font: 600 10px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); background: rgba(7, 6, 11, .6); border: 1px solid var(--line-2); border-radius: 999px; height: 32px; padding: 0 12px; }
+
+/* ticker */
+.ticker { overflow: hidden; border-block: 1px solid var(--line); padding-block: 14px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
+.ticker .track { display: flex; gap: 48px; width: max-content; animation: tick 28s linear infinite; font: 500 12px/1 var(--f-mono); letter-spacing: .32em; text-transform: uppercase; color: var(--ink-3); }
+.ticker .track span::after { content: "✦"; margin-left: 48px; color: var(--violet); }
+@keyframes tick { to { transform: translateX(-50%); } }
+
+/* consumer hero */
+.hero2 { position: relative; min-height: calc(92svh - var(--nav)); padding-top: calc(var(--nav) + 6vh); display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); align-items: center; gap: clamp(20px, 4vw, 60px); padding-bottom: 40px; }
+@media (max-width: 900px) { .hero2 { grid-template-columns: minmax(0, 1fr); padding-top: calc(var(--nav) + 3vh); min-height: 0; } .hero2 .slot { order: -1; margin-inline: auto; } }
+.hero2 .slot { width: min(100%, 440px); aspect-ratio: 1; justify-self: center; border-radius: 50%; }
+.hero2 .copy { display: grid; gap: 20px; }
+.hero2 h1 { font-size: clamp(46px, 7.2vw, 96px); line-height: .96; letter-spacing: -.04em; }
+.hero2 h1 .own { background: linear-gradient(90deg, var(--cyan), var(--violet-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero2 .ctas { justify-content: flex-start; }
+.pill-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill-list span { font: 500 12px/1 var(--f-mono); letter-spacing: .1em; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-2); }
+
+/* wallet section */
+.show { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: clamp(20px, 4vw, 56px); align-items: center; }
+@media (max-width: 900px) { .show { grid-template-columns: minmax(0, 1fr); } .show .right { text-align: left; justify-items: start; } }
+.show .big-list { display: grid; gap: 4px; font-size: clamp(30px, 4.4vw, 56px); font-weight: 800; letter-spacing: -.035em; line-height: 1; text-transform: uppercase; }
+.show .big-list span { color: var(--ink-3); transition: color .4s; }
+.show .big-list span.lit { color: var(--ink); }
+.show .right { display: grid; gap: 16px; text-align: right; justify-items: end; }
+.app { width: min(300px, 76vw); aspect-ratio: 9 / 18.5; border-radius: 36px; background: #0b0a12; border: 2px solid #2a2640; box-shadow: 0 50px 100px -50px #000, 0 0 0 6px #121020, inset 0 0 0 1px rgba(255, 255, 255, .06); padding: 18px 14px; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px; margin-inline: auto; position: relative; transform: rotate(-4deg); transition: transform .6s var(--ease); }
+.app:hover { transform: rotate(0deg) translateY(-6px); }
+.app .top { display: flex; justify-content: space-between; font: 500 11px/1 var(--f-mono); color: var(--ink-3); padding-top: 10px; }
+.app .tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, .06); }
+.app .tabs button { flex: 1; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-3); font: 600 11px/1 var(--f-display); letter-spacing: .04em; }
+.app .tabs button.on { background: var(--ink); color: #0b0a12; }
+.app .bal { display: grid; gap: 4px; padding: 14px; border-radius: 14px; background: linear-gradient(140deg, rgba(58, 208, 255, .18), rgba(154, 107, 255, .18)); border: 1px solid var(--line-2); }
+.app .bal small { font: 500 10px/1 var(--f-mono); letter-spacing: .2em; color: var(--ink-2); text-transform: uppercase; }
+.app .bal b { font-size: 30px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.app .list { display: grid; gap: 8px; align-content: start; }
+.app .brand-row { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, .04); font-size: 12px; }
+.app .brand-row .dot { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--violet), var(--cyan)); flex: none; }
+.app .brand-row .dot.a { background: linear-gradient(135deg, var(--amber), #ff7a90); } .app .brand-row .dot.g { background: linear-gradient(135deg, var(--green), var(--cyan)); }
+.app .brand-row b { display: block; font-size: 12px; } .app .brand-row small { color: var(--ink-3); }
+.app .brand-row span:last-child { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 600; }
+.app .cta { height: 40px; border-radius: 12px; border: 0; background: var(--ink); color: #0b0a12; font-weight: 700; font-size: 13px; }
+
+/* forms */
+.suggest { display: grid; gap: 18px; max-width: 640px; }
+.field { display: grid; gap: 8px; }
+.field label { font: 500 11px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+.field input, .field textarea { width: 100%; height: 52px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .03); color: var(--ink); font-size: 15px; transition: border-color .2s, box-shadow .2s; }
+.field textarea { height: 120px; padding: 14px 16px; resize: vertical; font-family: inherit; }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 4px rgba(58, 208, 255, .15); }
+.field.err input { border-color: var(--red); }
+.field .msg { font-size: 12px; color: var(--red); min-height: 14px; }
+.inline { display: flex; gap: 10px; }
+.inline input { flex: 1; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(126, 240, 176, .4); background: rgba(126, 240, 176, .08); font-size: 13px; animation: pop .5s var(--ease); }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+
+/* brand hero + sections */
+.hero3 { position: relative; padding-top: calc(var(--nav) + 8vh); min-height: calc(90svh - var(--nav)); display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); gap: clamp(20px, 4vw, 60px); align-items: end; padding-bottom: 48px; }
+@media (max-width: 900px) { .hero3 { grid-template-columns: minmax(0, 1fr); min-height: 0; align-items: start; } .hero3 .slot { order: -1; justify-self: start; width: min(48vw, 210px); } }
+.hero3 h1 { font-size: clamp(38px, 5.8vw, 78px); text-transform: uppercase; letter-spacing: -.035em; line-height: .98; }
+.hero3 h1 .dim { color: var(--ink-3); }
+.hero3 .side-copy { display: grid; gap: 18px; }
+.hero3 .slot { width: min(100%, 300px); aspect-ratio: 1; justify-self: end; border-radius: 50%; }
+.problem { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 60px); align-items: start; }
+@media (max-width: 900px) { .problem { grid-template-columns: minmax(0, 1fr); } }
+.problem h2 { text-transform: uppercase; font-size: clamp(28px, 3.6vw, 48px); }
+.args { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(20px, 4vw, 56px); align-items: start; }
+.args .sticky { position: sticky; top: calc(var(--nav) + 24px); display: grid; gap: 16px; }
+@media (max-width: 900px) { .args { grid-template-columns: minmax(0, 1fr); } .args .sticky { position: static; } }
+.args .progress { height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.args .progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--violet), var(--cyan)); transition: width .5s var(--ease); }
+.arg { display: grid; gap: 14px; padding: 26px; border-radius: var(--r); border: 1px solid var(--line); background: rgba(255, 255, 255, .02); transition: border-color .4s, background .4s; }
+.arg.on { border-color: rgba(154, 107, 255, .45); background: rgba(154, 107, 255, .06); }
+.arg .num { font: 500 11px/1 var(--f-mono); letter-spacing: .26em; color: var(--violet-2); }
+.arg h3 { text-transform: uppercase; font-size: 21px; }
+.arg p { color: var(--ink-2); font-size: 15px; }
+.arg .kicker { font-weight: 600; color: var(--ink); }
+.arg .pic { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 12px; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; background: radial-gradient(90% 80% at 50% 100%, rgba(154, 107, 255, .16), transparent 60%), #0b0a12; }
+.arg .pic .c2 { position: static; width: 34%; }
+.arg .pic .flowline { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: linear-gradient(90deg, transparent, rgba(58, 208, 255, .6), transparent); }
+.arg .pic svg.pouch { width: 34%; height: 80%; overflow: visible; }
+.pics { display: flex; align-items: center; gap: 14px; }
+.pics .box { width: 92px; height: 110px; border-radius: 10px; background: linear-gradient(160deg, #1a1726, #0c0b12); border: 1px solid var(--line-2); display: grid; place-items: center; font: 500 10px/1.4 var(--f-mono); letter-spacing: .12em; text-align: center; color: var(--ink-3); }
+.pics .arrow { flex: 1; height: 1px; background: linear-gradient(90deg, var(--violet), var(--cyan)); position: relative; }
+.pics .arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left-color: var(--cyan); }
+.pics .you { width: 110px; height: 110px; border-radius: 50%; border: 1px dashed rgba(255, 255, 255, .3); display: grid; place-items: center; font: 600 12px/1 var(--f-display); color: var(--ink-2); text-align: center; }
+
+/* comparison */
+.cmp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 760px) { .cmp { grid-template-columns: minmax(0, 1fr); } }
+.cmp .col { padding: 22px; display: grid; gap: 6px; align-content: start; }
+.cmp .col.no { border-color: rgba(255, 122, 144, .25); } .cmp .col.yes { border-color: rgba(126, 240, 176, .35); }
+.cmp .tag { display: inline-flex; width: max-content; font: 600 11px/1 var(--f-mono); letter-spacing: .18em; text-transform: uppercase; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+.cmp .no .tag { color: var(--red); background: rgba(255, 122, 144, .12); } .cmp .yes .tag { color: var(--green); background: rgba(126, 240, 176, .12); }
+.cmp .li { display: flex; gap: 12px; align-items: center; padding: 12px 10px; border-radius: 10px; font-size: 15px; transition: background .25s, transform .3s var(--ease); cursor: pointer; }
+.cmp .li i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-style: normal; flex: none; }
+.cmp .no .li i { background: rgba(255, 122, 144, .16); color: var(--red); } .cmp .yes .li i { background: rgba(126, 240, 176, .16); color: var(--green); }
+.cmp .li.hl { background: rgba(255, 255, 255, .07); }
+.cmp .li.fixed { text-decoration: line-through; color: var(--ink-3); }
+.cmp .li.pulse { animation: pulse .7s var(--ease); }
+@keyframes pulse { 30% { transform: scale(1.03); background: rgba(126, 240, 176, .18); } }
+
+/* calculator */
+.calc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+@media (max-width: 900px) { .calc { grid-template-columns: minmax(0, 1fr); } }
+.calc .inputs { display: grid; gap: 22px; }
+.range { display: grid; gap: 8px; }
+.range .lab { display: flex; justify-content: space-between; font-size: 14px; color: var(--ink-2); }
+.range .lab b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.range input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; }
+.range input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--violet) var(--p, 50%), rgba(255, 255, 255, .12) var(--p, 50%)); }
+.range input[type=range]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .12); }
+.range input[type=range]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--violet); }
+.range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -9px; border-radius: 50%; background: var(--ink); border: 4px solid var(--bg); box-shadow: 0 0 0 1px var(--line-2); }
+.range input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--ink); border: 3px solid var(--bg); }
+.outs { display: grid; gap: 10px; align-content: start; }
+.out { display: grid; gap: 4px; padding: 18px 20px; border-radius: 12px; background: rgba(255, 255, 255, .03); border: 1px solid var(--line); }
+.out small { font: 500 11px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+.out b { font-size: clamp(26px, 3vw, 38px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.out.hi { background: linear-gradient(140deg, rgba(154, 107, 255, .16), rgba(58, 208, 255, .1)); border-color: rgba(154, 107, 255, .35); }
+.note { font-size: 13px; color: var(--ink-3); }
+
+/* token */
+.token { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 60px); align-items: center; }
+@media (max-width: 900px) { .token { grid-template-columns: minmax(0, 1fr); } }
+.token .slot { width: min(100%, 420px); aspect-ratio: 1; margin-inline: auto; border-radius: 50%; }
+.token h2 { text-transform: uppercase; }
+.token h2 .dim { color: var(--ink-3); }
+.specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; border-top: 1px solid var(--line); margin-top: 8px; }
+.specs div { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.specs small { font: 500 11px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); }
+.specs b { font-weight: 600; }
+.sw { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sw button { display: inline-flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px 0 8px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(255, 255, 255, .03); color: var(--ink-2); font-weight: 600; font-size: 14px; transition: border-color .25s, color .25s, transform .25s var(--ease); }
+.sw button i { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); }
+.sw button.on { border-color: var(--ink); color: var(--ink); transform: translateY(-2px); }
+.sw .onyx i { background: radial-gradient(circle at 35% 35%, #f2f2f6, #8d8d99 55%, #2a2a33); } .sw .amber i { background: radial-gradient(circle at 35% 35%, #ffe3a8, #e2a243 55%, #6a4410); } .sw .nova i { background: radial-gradient(circle at 35% 35%, #ead9ff, #b57aff 55%, #4a1f7a); }
+
+/* pricing */
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+@media (max-width: 900px) { .plans { grid-template-columns: minmax(0, 1fr); } }
+.plan { display: grid; gap: 16px; align-content: start; padding: 26px; }
+.plan:hover { --ty: -4px; border-color: var(--line-2); }
+.plan.pop { border-color: rgba(154, 107, 255, .5); background: linear-gradient(180deg, rgba(154, 107, 255, .12), rgba(154, 107, 255, .03)); }
+.plan .badge { position: absolute; top: -12px; left: 24px; font: 600 10px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; padding: 7px 10px; border-radius: 999px; background: var(--violet); color: #140a26; }
+.plan .name { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.plan .price { font-size: 40px; font-weight: 800; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.plan .price small { font-size: 15px; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+.plan p { color: var(--ink-2); font-size: 15px; }
+.plan ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 15px; }
+.plan li { display: flex; gap: 10px; align-items: flex-start; }
+.plan li::before { content: "✓"; color: var(--green); font-size: 13px; margin-top: 3px; }
+.plan .btn { margin-top: auto; justify-content: center; }
+
+/* contact */
+.contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 60px); align-items: start; }
+@media (max-width: 900px) { .contact { grid-template-columns: minmax(0, 1fr); } }
+.contact h2 { text-transform: uppercase; }
+.form { display: grid; gap: 16px; }
+.form .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 560px) { .form .two { grid-template-columns: minmax(0, 1fr); } }
+.form .ok { padding: 14px 16px; border-radius: 12px; background: rgba(126, 240, 176, .1); border: 1px solid rgba(126, 240, 176, .4); color: var(--green); font-size: 14px; }
+
+/* footer */
+footer { position: relative; z-index: 1; border-top: 1px solid var(--line); padding-block: 40px 48px; background: linear-gradient(180deg, transparent, rgba(154, 107, 255, .06)); }
+footer .wrap { display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center; }
+@media (max-width: 760px) { footer .wrap { grid-template-columns: minmax(0, 1fr); } }
+footer .links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--ink-2); }
+footer .links a { text-decoration: none; } footer .links a:hover { color: var(--ink); }
+footer small { font: 400 12px/1.5 var(--f-mono); color: var(--ink-3); }
+footer .again { font: 600 12px/1 var(--f-mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ink-2); background: none; border: 1px solid var(--line-2); border-radius: 999px; height: 40px; padding: 0 16px; }
+
+/* warp: flash, HUD, cursor, discovery chip */
+.flash { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0; background: var(--fc, #9a6bff); }
+.flash.go { animation: flash .9s ease-out forwards; }
+@keyframes flash { 0% { opacity: 0; } 12% { opacity: 1; } 100% { opacity: 0; } }
+.hud { position: fixed; inset: 0; z-index: 55; pointer-events: none; opacity: 0; transition: opacity .3s; display: grid; place-items: center; }
+.hud.on { opacity: 1; }
+.hud .frame { position: absolute; inset: 7vh 6vw; }
+.hud .frame i { position: absolute; width: 34px; height: 34px; border: 1px solid rgba(255, 255, 255, .55); }
+.hud .frame i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; } .hud .frame i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.hud .frame i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; } .hud .frame i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+.hud .line { position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent); animation: scanl 1.2s linear infinite; }
+@keyframes scanl { from { top: 0; } to { top: 100%; } }
+.hud .txt { position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); font: 500 12px/1 var(--f-mono); letter-spacing: .4em; text-transform: uppercase; color: #fff; white-space: nowrap; text-shadow: 0 0 14px rgba(255, 255, 255, .6); }
+.cur { position: fixed; left: 0; top: 0; z-index: 70; pointer-events: none; opacity: 0; }
+body.fine .cur { opacity: 1; }
+.cur .dot { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--violet-2); transform: translate(-50%, -50%); }
+.cur .ring { position: absolute; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(198, 171, 255, .7); transform: translate(-50%, -50%); transition: width .25s, height .25s, border-color .25s, background .25s; }
+.cur.hot .ring { width: 54px; height: 54px; background: rgba(198, 171, 255, .1); }
+.cur .lab { position: absolute; top: 24px; left: 0; transform: translateX(-50%); font: 500 9px/1 var(--f-mono); letter-spacing: .3em; text-transform: uppercase; color: var(--ink-2); white-space: nowrap; opacity: 0; transition: opacity .2s; }
+.cur.hot .lab { opacity: 1; }
+.disc { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px 0 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font: 600 11px/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); transition: transform .4s var(--ease), color .3s; }
+.disc b { color: var(--amber); font-weight: 600; }
+.disc.bump { animation: bump .5s var(--ease); }
+@keyframes bump { 40% { transform: scale(1.08); } }
+.disc.full { color: var(--green); border-color: rgba(126, 240, 176, .5); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 16px; top: -60px; z-index: 80; background: var(--ink); color: #0b0a12; padding: 10px 14px; border-radius: 8px; font-weight: 600; }
+.skip:focus { top: 14px; }
+</style>
+<a class="skip" href="#main">Skip to content</a>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="flash" id="flash" aria-hidden="true"></div>
+<div class="hud" id="hud" aria-hidden="true"><div class="frame"><i></i><i></i><i></i><i></i><span class="line"></span></div><div class="txt" id="hudtxt">Entering the portal</div></div>
+<div class="cur" id="cur" aria-hidden="true"><div class="ring"></div><div class="dot"></div><div class="lab" id="curlab">Flip</div></div>
+<button class="disc" id="disc" type="button" title="Things to try on this page"><span>✦</span><b id="discn">0</b><span>/ 9 found</span></button>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#home" data-route="home" aria-label="Portal Rewards home">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3ad0ff"/><stop offset="1" stop-color="#9a6bff"/></linearGradient></defs><circle cx="20" cy="20" r="17.5" fill="none" stroke="url(#lg)" stroke-width="2"/><path d="M15 29V11h6.2a5.4 5.4 0 0 1 0 10.8H15" fill="none" stroke="#f3f1fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><b>Portal Rewards</b><small>WHERE LOYALTY LIVES</small></span>
+    </a>
+    <nav class="nav-links" id="navlinks" aria-label="Page sections"></nav>
+    <div class="switch" role="group" aria-label="Choose your side">
+      <a class="c" href="#consumer" data-route="consumer" id="sw-c">Consumer</a>
+      <a class="b" href="#brand" data-route="brand" id="sw-b">Brands</a>
+    </div>
+    <button class="sound" id="sound" type="button" aria-pressed="false" aria-label="Turn sound on"><i><b></b><b></b><b></b><b></b></i><span>Sound off</span></button>
+    <button class="burger" id="burger" type="button" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    <i class="prog" id="prog" aria-hidden="true"></i>
+  </div>
+</header>
+<div class="menu" id="menu" hidden></div>
+
+<main id="main">
+
+<!-- =============================== HOME =============================== -->
+<section class="page" data-page="home" id="page-home">
+  <div class="hero wrap" id="hero">
+    <div class="hero-copy">
+      <div class="slot coin-anchor" data-size=".9" data-size-m=".44" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it, use the arrow keys to spin it, or drag it with the pointer."><span class="toss" id="toss">HEADS</span></div>
+      <span class="hint hint-tap">Tap to flip · drag to spin</span>
+      <span class="eyebrow">Portal Rewards</span>
+      <h1 data-decode>Where loyalty <b>lives</b><em class="hu">.</em></h1>
+      <p class="lead">A loyalty platform built inside the product. Find the coin, scan it, and the brand you love finally gets to know you back.</p>
+      <div class="ctas">
+        <a class="btn c" href="#consumer" data-route="consumer" data-cursor="Enter">I'm a customer <span class="arr">↗</span></a>
+        <a class="btn b" href="#brand" data-route="brand" data-cursor="Build">I'm a brand <span class="arr">↗</span></a>
+      </div>
+      <span class="hint"><i></i>Scroll to look around</span>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="two-sides">
+    <div class="sec-head center rv">
+      <span class="eyebrow">One scan. Two sides.</span>
+      <h2>One coin. One connected relationship.</h2>
+      <p class="lead">The same coin works for the person holding the product and for the brand that made it. Pick your side and the portal takes you there.</p>
+    </div>
+    <div class="sides">
+      <a class="card side tilt c glow-c rv" href="#consumer" data-route="consumer" data-cursor="Enter">
+        <span class="orb"></span><span class="ringlet"></span>
+        <span class="eyebrow">For consumers</span>
+        <h3>Enter the <b>portal</b></h3>
+        <p class="lead">Scan QR coins. Earn rewards. Keep every coin you've earned, from every brand, in one app that never expires them.</p>
+        <span class="go">Explore consumer rewards <span class="arr">→</span></span>
+      </a>
+      <a class="card side tilt b glow-b rv" href="#brand" data-route="brand" data-cursor="Build">
+        <span class="orb"></span><span class="ringlet"></span>
+        <span class="eyebrow">For brands</span>
+        <h3>Build your <b>portal</b></h3>
+        <p class="lead">Know your customers. Own the relationship. Grow a named, reachable list of people who actually bought your product.</p>
+        <span class="go">Explore Portal for brands <span class="arr">→</span></span>
+      </a>
+    </div>
+  </div>
+
+  <div class="ticker" aria-hidden="true"><div class="track"><span>Find the coin</span><span>Scan it</span><span>Earn rewards</span><span>Own the relationship</span><span>Find the coin</span><span>Scan it</span><span>Earn rewards</span><span>Own the relationship</span></div></div>
+
+  <div class="sec wrap" id="how-home">
+    <div class="sec-head rv">
+      <span class="eyebrow">How a coin works</span>
+      <h2>Three moments, <em class="hu">one</em> small coin.</h2>
+      <p class="lead">Try each one. The demos below react to your pointer or your tap.</p>
+    </div>
+    <div class="steps" data-demos></div>
+  </div>
+
+  <div class="sec wrap" id="story">
+    <div class="story">
+      <div class="rv">
+        <span class="clock">Tuesday · 6:40 pm</span>
+        <h2 style="margin-top:14px">Maya opens the bag. There's a <em>coin</em> inside. Ninety seconds later the roaster who made her coffee knows she exists.</h2>
+        <ol class="timeline" id="timeline">
+          <li class="on" data-step="0"><b>She finds the coin</b> tucked in the pouch, next to the beans.</li>
+          <li data-step="1"><b>She scans it</b> with her phone. No app store trip needed to start.</li>
+          <li data-step="2"><b>50 Brand Coins</b> land in her wallet. They never expire.</li>
+          <li data-step="3"><b>The roaster sees a real person</b>, not a wholesale invoice. Next drop, she hears first.</li>
+        </ol>
+      </div>
+      <div class="board rv" id="board" data-cursor="Draw"><button class="replay" type="button" id="replay">↻ Draw again</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- =============================== CONSUMER =============================== -->
+<section class="page" data-page="consumer" id="page-consumer">
+  <div class="hero2 wrap">
+    <div class="copy">
+      <span class="eyebrow" data-decode>For consumers</span>
+      <h1 data-decode>Scan it.<br>Earn it.<br><span class="own">Own it.</span></h1>
+      <p class="lead">A loyalty app you'd actually want on your phone: simple, rewarding, and built to turn every purchase into a reason to come back.</p>
+      <div class="ctas">
+        <a class="btn c" href="#contact" data-anchor="contact-consumer" data-cursor="Go">Get the app <span class="arr">↗</span></a>
+        <a class="btn ghost" href="#how" data-anchor="how-consumer">See how it works</a>
+      </div>
+      <div class="pill-list" aria-label="What you get"><span>No expiry</span><span>Every brand, one wallet</span><span>Single-use QR coins</span></div>
+    </div>
+    <div class="slot coin-anchor" data-size="1" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+  </div>
+
+  <div class="sec wrap" id="how-consumer">
+    <div class="sec-head rv">
+      <span class="eyebrow">How it works</span>
+      <h2>Find it. Scan it. <em class="hu">Keep</em> it.</h2>
+    </div>
+    <div class="steps" data-demos></div>
+  </div>
+
+  <div class="sec wrap" id="wallet">
+    <div class="show">
+      <div class="big-list rv" id="biglist"><span>Your brands</span><span>Your coins</span><span>Your rewards</span></div>
+      <div class="app rv" id="app">
+        <div class="top"><span>9:41</span><span>PORTAL</span></div>
+        <div class="tabs" role="tablist" aria-label="Coin type"><button type="button" class="on" data-tab="brand" role="tab" aria-selected="true">Brand Coins</button><button type="button" data-tab="portal" role="tab" aria-selected="false">Portal Coins</button></div>
+        <div class="list">
+          <div class="bal"><small id="bal-lab">Brand Coins · never expire</small><b id="bal">1,240</b></div>
+          <div class="brand-row"><span class="dot"></span><span><b>Northpine Roasters</b><small>Coffee · 3 scans</small></span><span>450</span></div>
+          <div class="brand-row"><span class="dot a"></span><span><b>Sundial Botanicals</b><small>Wellness · 2 scans</small></span><span>420</span></div>
+          <div class="brand-row"><span class="dot g"></span><span><b>Grove Supply Co.</b><small>Snacks · 4 scans</small></span><span>370</span></div>
+        </div>
+        <button class="cta" type="button" data-cursor="Redeem">Redeem a reward</button>
+      </div>
+      <div class="right rv">
+        <h2>These are <em class="hu">your</em> coins. They don't expire.</h2>
+        <p class="lead">Portal Coins work across the whole platform. Brand Coins are earned from one brand and spent with that brand. Both stay in your wallet for as long as you want them.</p>
+        <a class="btn pri" href="#contact" data-anchor="contact-consumer" data-cursor="Go">Get the app <span class="arr">↗</span></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="suggest">
+    <div class="sec-head rv">
+      <span class="eyebrow">Your brand should be here</span>
+      <h2>Which brand do you already buy and want on Portal?</h2>
+      <p class="lead">Tell us, and we'll go ask them. Every name on this list is a brand someone asked for.</p>
+    </div>
+    <form class="suggest rv" id="suggest-form" novalidate>
+      <div class="field"><label for="brand-name">Brand name</label>
+        <div class="inline"><input id="brand-name" name="brand" type="text" placeholder="e.g. Northpine Roasters" autocomplete="off" required><button class="btn pri" type="submit">Add it</button></div>
+        <div class="msg" id="brand-msg"></div>
+      </div>
+      <div class="chips" id="chips" aria-live="polite"></div>
+    </form>
+  </div>
+
+  <div class="sec wrap" id="contact-consumer"><div data-contact="consumer"></div></div>
+</section>
+
+<!-- =============================== BRAND =============================== -->
+<section class="page" data-page="brand" id="page-brand">
+  <div class="hero3 wrap">
+    <div class="side-copy">
+      <span class="eyebrow" data-decode>For brands</span>
+      <h1 data-decode>Your customers are buying your product. <span class="dim">Now you can actually</span> <em class="hu">know</em> them.</h1>
+      <p class="lead">Portal Rewards gives brands the direct customer channel that Google and Meta won't: a coin inside your packaging that turns every purchase into a named, reachable relationship.</p>
+      <div class="ctas">
+        <a class="btn b" href="#contact" data-anchor="contact-brand" data-cursor="Build">Build your portal <span class="arr">↗</span></a>
+        <a class="btn ghost" href="#calc" data-anchor="calc">Estimate your numbers</a>
+      </div>
+    </div>
+    <div class="slot coin-anchor" data-size="1" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+  </div>
+
+  <div class="sec wrap" id="problem">
+    <div class="problem">
+      <h2 class="rv">You made the sale. The retailer kept the <em class="hu">customer</em>.</h2>
+      <div class="rv" style="display:grid;gap:18px">
+        <p class="lead">Every unit you sell today creates a customer relationship, for someone else. The dispensary gets the name, the purchase history and the next sale. You get a wholesale invoice. Portal Rewards moves that relationship back to where it belongs: with the brand that earned it.</p>
+        <div class="pics" aria-hidden="true"><div class="box">YOUR<br>PRODUCT</div><div class="arrow"></div><div class="box">RETAILER<br>POS</div><div class="arrow"></div><div class="you">You, finally<br>in the loop</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="why">
+    <div class="args">
+      <div class="sticky rv">
+        <span class="eyebrow">Why a coin</span>
+        <h2>The channel they can't <em class="hu">switch off</em>.</h2>
+        <p class="lead">Three reasons brands put a coin inside the package instead of buying another impression.</p>
+        <div class="progress"><i id="argbar"></i></div>
+      </div>
+      <div style="display:grid;gap:16px" id="args">
+        <div class="arg tilt rv"><span class="num">01</span><h3>Stop handing your customers to the POS</h3>
+          <div class="pic"><div class="flowline"></div><img class="c2 coin-face" alt="" aria-hidden="true"></div>
+          <p>Every purchase of your product generates first-party data right now. You just don't receive it. A coin inside the package reroutes that moment: the customer scans, enters your portal and identifies themselves to you, verified by the product in their hand, not a guess from a budtender's system.</p>
+          <p class="kicker">Your product already reaches the customer. Now your brand does too.</p></div>
+        <div class="arg tilt rv"><span class="num">02</span><h3>Your packaging is the only ad placement you're allowed</h3>
+          <div class="pic"><svg class="pouch" viewBox="0 0 120 170" data-pouch></svg></div>
+          <p>No Google. No Meta. No billboards near a school. But the inside of your own bag? Unrestricted, unbannable, and already in your customer's hands at the exact moment they like you most. The coin turns that placement into currency they can actually spend with you.</p>
+          <p class="kicker">The one ad channel no platform can shut off.</p></div>
+        <div class="arg tilt rv"><span class="num">03</span><h3>Every month without a channel is a month of customers you can't name</h3>
+          <div class="pic"><div class="pics" style="width:80%"><div class="box">SCAN<br>#0412</div><div class="arrow"></div><div class="box">SCAN<br>#0413</div><div class="arrow"></div><div class="you">A list<br>you own</div></div></div>
+          <p>You can't retarget a customer you can't identify. You can't reward loyalty you can't see. Every verified scan builds the asset your competitors don't have: a named, reachable list of people who provably bought your product. That's the foundation for launches, drops and repeat revenue you control.</p>
+          <p class="kicker">Start owning the list. Not renting the shelf.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="compare">
+    <div class="sec-head rv">
+      <span class="eyebrow">Before and after</span>
+      <h2>Only retailers know who buys your brand. <em class="hu">Until now.</em></h2>
+      <p class="lead">Hover a line to see what changes. Click a problem to fix it.</p>
+    </div>
+    <div class="cmp" id="cmp">
+      <div class="card col no rv"><span class="tag">Without Portal Rewards</span>
+        <div class="li" data-i="0"><i>✕</i>Retailers own all customer data</div>
+        <div class="li" data-i="1"><i>✕</i>You're invisible after the sale</div>
+        <div class="li" data-i="2"><i>✕</i>Google &amp; Meta charge per impression</div>
+        <div class="li" data-i="3"><i>✕</i>Zero repeat-purchase attribution</div>
+        <div class="li" data-i="4"><i>✕</i>Brand loyalty? Whoever holds the POS</div></div>
+      <div class="card col yes rv"><span class="tag">With Portal Rewards</span>
+        <div class="li" data-i="0"><i>✓</i>You own a direct channel to every customer</div>
+        <div class="li" data-i="1"><i>✓</i>Every scan is a verified buyer identity</div>
+        <div class="li" data-i="2"><i>✓</i>Zero CPM. Zero algorithm dependency</div>
+        <div class="li" data-i="3"><i>✓</i>A lifetime relationship, not a transaction</div>
+        <div class="li" data-i="4"><i>✓</i>Your portal. Your data. Always.</div></div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="calc">
+    <div class="sec-head rv">
+      <span class="eyebrow">Estimate</span>
+      <h2>What a coin is worth to <em class="hu">you</em>.</h2>
+      <p class="lead">Move the sliders. This is a simple what-if, not a promise: the inputs are yours, the arithmetic is shown.</p>
+    </div>
+    <div class="calc">
+      <div class="card inputs rv">
+        <div class="range"><div class="lab"><span>Units you sell per month</span><b id="o-units">20,000</b></div><input id="r-units" type="range" min="1000" max="200000" step="1000" value="20000" aria-label="Units per month"></div>
+        <div class="range"><div class="lab"><span>Customers who scan the coin</span><b id="o-scan">35%</b></div><input id="r-scan" type="range" min="5" max="80" step="1" value="35" aria-label="Scan rate"></div>
+        <div class="range"><div class="lab"><span>Scanners who buy again within 90 days</span><b id="o-repeat">12%</b></div><input id="r-repeat" type="range" min="1" max="50" step="1" value="12" aria-label="Repeat rate"></div>
+        <div class="range"><div class="lab"><span>Average order value</span><b id="o-aov">$38</b></div><input id="r-aov" type="range" min="10" max="200" step="1" value="38" aria-label="Average order value"></div>
+      </div>
+      <div class="outs rv">
+        <div class="out"><small>Named customers per month</small><b id="c-named">7,000</b><span class="note">units × scan rate</span></div>
+        <div class="out"><small>Repeat orders you can attribute</small><b id="c-orders">840</b><span class="note">named customers × repeat rate</span></div>
+        <div class="out hi"><small>Revenue you can trace to the coin, per month</small><b id="c-rev">$31,920</b><span class="note">repeat orders × average order</span></div>
+        <div class="out"><small>Over a year</small><b id="c-year">$383,040</b><span class="note">before coin and plan costs</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="token">
+    <div class="token">
+      <div class="slot coin-anchor" data-size=".95" role="button" tabindex="0" aria-label="The Portal coin. Press Enter to flip it or drag it to spin."></div>
+      <div style="display:grid;gap:18px" class="rv">
+        <span class="eyebrow">The token</span>
+        <h2>Not a sticker. Not a punch card. <span class="dim">A collectible that</span> <em class="hu">pays off</em>.</h2>
+        <p class="lead">A 1.25" blockchain-secured, single-use QR token. Batch numbered, collectible by design, and compatible with every packaging format, from bags to boxes to mailers.</p>
+        <div class="sw" role="group" aria-label="Colorway">
+          <button type="button" class="onyx on" data-color="onyx"><i></i>Onyx</button>
+          <button type="button" class="amber" data-color="amber"><i></i>Amber</button>
+          <button type="button" class="nova" data-color="nova"><i></i>Nova</button>
+        </div>
+        <div class="specs">
+          <div><small>Size</small><b>1.25" diameter</b></div><div><small>Colorways</small><b>Onyx · Amber · Nova</b></div>
+          <div><small>Security</small><b>Blockchain-secured</b></div><div><small>Use</small><b>Single-use QR scan</b></div>
+          <div><small>Format</small><b>Any packaging type</b></div><div><small>Numbering</small><b>Batch numbered</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="pricing">
+    <div class="sec-head rv">
+      <span class="eyebrow">Pricing</span>
+      <h2>Simple pricing. Real <em class="hu">ROI</em>.</h2>
+      <p class="lead">Start with one portal and grow. Yearly plans are available when you talk to us.</p>
+    </div>
+    <div class="plans">
+      <div class="card plan tilt rv"><span class="name">Starter</span><span class="price">Custom <small>quote</small></span><p>For a first product line and a first portal.</p>
+        <ul><li>1 brand portal</li><li>Basic analytics</li><li>3 colorways included</li><li>Email support</li></ul>
+        <a class="btn" href="#contact" data-anchor="contact-brand">Talk to us <span class="arr">↗</span></a></div>
+      <div class="card plan tilt pop rv"><span class="badge">Most popular</span><span class="name">Growth</span><span class="price">$749 <small>/ month</small></span><p>For scaling brands that want real customer relationships.</p>
+        <ul><li>Up to 25,000 coins a month</li><li>3 brand portals</li><li>Advanced analytics &amp; CRM</li><li>Custom coin branding</li><li>Loyalty campaign tools</li></ul>
+        <a class="btn b" href="#contact" data-anchor="contact-brand" data-cursor="Start">Start free trial <span class="arr">↗</span></a></div>
+      <div class="card plan tilt rv"><span class="name">Pro</span><span class="price">Let's <small>talk</small></span><p>For multi-state operators and high-volume brands.</p>
+        <ul><li>Unlimited coins and portals</li><li>Full API access</li><li>Dedicated account manager</li><li>White-label portal</li></ul>
+        <a class="btn" href="#contact" data-anchor="contact-brand">Contact sales <span class="arr">↗</span></a></div>
+    </div>
+  </div>
+
+  <div class="sec wrap" id="contact-brand"><div data-contact="brand"></div></div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#home" data-route="home"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17.5" fill="none" stroke="url(#lg)" stroke-width="2"/><path d="M15 29V11h6.2a5.4 5.4 0 0 1 0 10.8H15" fill="none" stroke="#f3f1fa" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Portal Rewards</b></span></a>
+    <div class="links"><a href="#consumer" data-route="consumer">Consumers</a><a href="#brand" data-route="brand">Brands</a><a href="#pricing" data-route="brand" data-anchor="pricing">Pricing</a><a href="#contact" data-route="brand" data-anchor="contact-brand">Contact</a><a href="https://portalrewards.com" target="_blank" rel="noopener">portalrewards.com ↗</a><span>Privacy policy</span><span>Terms</span></div>
+    <button class="again" type="button" id="again">Experience again</button>
+  </div>
+  <div class="wrap" style="margin-top:22px"><small>© 2026 Portal Rewards. Redesign prototype: forms don't send yet, and the brands in the wallet demo are examples.</small></div>
+</footer>
+
+<template id="demo-tpl">
+  <div class="card step tilt rv">
+    <div class="num"><span>01</span><span>FIND</span></div>
+    <h3>Find the coin inside your product</h3>
+    <p>It ships in the bag, box or mailer, right next to the thing you bought. Hover or tap the pouch to open it.</p>
+    <div class="demo find" data-cursor="Open" role="button" tabindex="0" aria-label="Open the pouch"><svg class="pouch" viewBox="0 0 120 170" data-pouch></svg><div class="pocket"><img class="c2 coin-face" alt=""></div><span class="state">Closed · tap to open</span></div>
+  </div>
+  <div class="card step tilt rv">
+    <div class="num"><span>02</span><span>SCAN</span></div>
+    <h3>Scan the coin from your phone</h3>
+    <p>Point the camera at the QR on the coin. One scan, single use, verified by the product in your hand. Tap the phone to scan.</p>
+    <div class="demo scan" data-cursor="Scan" role="button" tabindex="0" aria-label="Scan the coin"><div class="phone"><div class="cam"><span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span><img class="c2 coin-face" alt=""><div class="beam"></div></div><div class="label">Scan the coin</div><div class="shutter"><svg viewBox="0 0 58 58"><circle class="track" cx="29" cy="29" r="27"/><circle class="fill" cx="29" cy="29" r="27"/></svg></div></div><div class="toast">+50 Brand Coins</div><span class="state">Ready · tap to scan</span></div>
+  </div>
+  <div class="card step tilt rv">
+    <div class="num"><span>03</span><span>EARN</span></div>
+    <h3>Earn coins &amp; redeem rewards</h3>
+    <p>Coins land in your wallet and stay there. Spend them on the next drop, a discount, or something you can't buy. Tap redeem.</p>
+    <div class="demo earn" data-cursor="Redeem"><div class="wallet"><div class="row"><span>Brand Coins</span><span>Northpine Roasters</span></div><b class="big" data-count="1240">1,240</b><div class="bar"><i></i></div><div class="row"><span>Next reward at 1,500</span><span class="left">260 to go</span></div><button class="redeem" type="button">Redeem 500 coins</button></div></div>
+  </div>
+</template>
+
+<template id="contact-tpl">
+  <div class="contact">
+    <div class="rv" style="display:grid;gap:18px">
+      <span class="eyebrow">Let's talk</span>
+      <h2>Let's build your custom portal <em class="hu">today</em>.</h2>
+      <p class="lead">Join the brands using Portal Rewards to own their customer relationships, turn every product into a touchpoint, and build loyalty that lasts beyond the first purchase.</p>
+      <p class="note">Prefer email? <b style="color:var(--ink);user-select:all">hello@portalrewards.com</b> <button type="button" class="btn sm ghost" data-copy="hello@portalrewards.com">Copy</button></p>
+    </div>
+    <form class="card form rv" novalidate>
+      <div class="two">
+        <div class="field"><label>Contact name</label><input name="name" type="text" autocomplete="name" required><div class="msg"></div></div>
+        <div class="field"><label>Email</label><input name="email" type="email" autocomplete="email" required><div class="msg"></div></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Phone</label><input name="phone" type="tel" autocomplete="tel"><div class="msg"></div></div>
+        <div class="field"><label>State</label><input name="state" type="text" autocomplete="address-level1" required><div class="msg"></div></div>
+      </div>
+      <div class="field"><label>Message</label><textarea name="message" placeholder="What are you selling, and where?"></textarea><div class="msg"></div></div>
+      <button class="btn pri" type="submit" style="justify-content:center">Get started <span class="arr">↗</span></button>
+      <div class="ok" hidden></div>
+    </form>
+  </div>
+</template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+/* ======================================================================
+   1. The coin: face textures drawn on canvas, geometry from primitives
+   ====================================================================== */
+const PALETTES = {
+  onyx: { cyan: "#3cc8ff", violet: "#b070ff", lavender: "#8e8cf6", white: "#f5f5f8", black: "#0a0a0e", navy: "#0b0e1a", silver: "#e4e6ec", metal: "#e4e6ec" },
+  amber: { cyan: "#ffd36b", violet: "#ff8a3d", lavender: "#ffb070", white: "#fff6e6", black: "#120d06", navy: "#160f08", silver: "#f0c76a", metal: "#e9b75a" },
+  nova: { cyan: "#9be9ff", violet: "#c58cff", lavender: "#9a6bff", white: "#f6f0ff", black: "#0e0716", navy: "#120a20", silver: "#d9c4ff", metal: "#c9a8ff" },
+};
+const TEXT = { top: "PORTAL REWARDS", bottom: "SCAN TO EARN", qr: "https://portalrewards.com" };
+const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+function arcText(c, text, cx, cy, radius, centerAngle, size, flip, spacing) {
+  c.save(); c.font = `600 ${size}px "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+  const widths = [...text].map((ch) => c.measureText(ch).width + size * spacing), total = widths.reduce((a, b) => a + b, 0), dir = flip ? -1 : 1;
+  let ang = centerAngle - dir * (total / 2) / radius;
+  [...text].forEach((ch, i) => { const w = widths[i], a = ang + dir * (w / 2) / radius; c.save(); c.translate(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius); c.rotate(a + dir * Math.PI / 2); c.fillText(ch, 0, 0); c.restore(); ang += dir * w / radius; });
+  c.restore();
+}
+const rng = (seed) => { let s = seed; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; };
+let QR = null;
+function qrModules() {
+  if (QR) return QR;
+  try { const q = window.qrcode(0, "M"); q.addData(TEXT.qr); q.make(); const n = q.getModuleCount(); QR = { n, at: (r, c) => q.isDark(r, c) }; }
+  catch (e) { const rq = rng(11), n = 25, dark = (r, c) => { const f = (a, b) => (r >= a && r < a + 7 && c >= b && c < b + 7) ? ((r === a || r === a + 6 || c === b || c === b + 6) || (r >= a + 2 && r <= a + 4 && c >= b + 2 && c <= b + 4)) : null; const v = f(0, 0) ?? f(0, n - 7) ?? f(n - 7, 0); return v !== null ? v : rq() > 0.55; }; QR = { n, at: dark }; }
+  return QR;
+}
+// one routine draws both the colour map and the height map ("h" paints grey levels = relief height)
+function drawFace(c, S, mode, P) {
+  const H = mode === "h", cx = S / 2, cy = S / 2, R = S / 2 * 0.985, g = (l) => `rgb(${l},${l},${l})`;
+  const grad = () => { const gr = c.createLinearGradient(cx - R, cy + R * 0.6, cx + R, cy - R * 0.6); gr.addColorStop(0, P.cyan); gr.addColorStop(0.5, P.lavender); gr.addColorStop(1, P.violet); return gr; };
+  c.fillStyle = H ? g(0) : "#000"; c.fillRect(0, 0, S, S);
+  c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fillStyle = H ? g(40) : P.black; c.fill();
+  if (!H) { const v = c.createRadialGradient(cx, cy, R * 0.6, cx, cy, R); v.addColorStop(0, "rgba(255,255,255,0)"); v.addColorStop(1, "rgba(255,255,255,0.06)"); c.fillStyle = v; c.fill(); }
+  const rnd = rng(7); c.lineCap = "round"; c.lineJoin = "round"; c.strokeStyle = H ? g(120) : grad(); c.fillStyle = H ? g(120) : grad();
+  const node = (a, r, filled) => { c.beginPath(); c.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, R * (filled ? 0.008 : 0.013), 0, Math.PI * 2); if (filled) c.fill(); else { c.lineWidth = R * 0.005; c.stroke(); } };
+  for (const side of [Math.PI, 0]) {
+    const radii = [0.78, 0.81, 0.845, 0.875, 0.905, 0.935];
+    for (let k = 0; k < radii.length; k++) {
+      const r = R * radii[k], span = 0.28 + rnd() * 0.42, off = (rnd() - 0.5) * 0.5, a0 = side - span + off, a1 = side + span * (0.7 + rnd() * 0.5) + off;
+      c.lineWidth = R * 0.0055;
+      if (rnd() > 0.45) { const am = a0 + (a1 - a0) * (0.35 + rnd() * 0.3), r2 = R * radii[Math.min(radii.length - 1, k + 1)] - R * 0.004; c.beginPath(); c.arc(cx, cy, r, a0, am); c.lineTo(cx + Math.cos(am) * r2, cy + Math.sin(am) * r2); c.arc(cx, cy, r2, am, a1); c.stroke(); node(a0, r, rnd() > 0.5); node(a1, r2, rnd() > 0.5); }
+      else { c.beginPath(); c.arc(cx, cy, r, a0, a1); c.stroke(); node(a0, r, rnd() > 0.5); node(a1, r, rnd() > 0.5); }
+    }
+    for (let k = 0; k < 5; k++) { const a = side + (rnd() - 0.5) * 1.2, r = R * (0.79 + rnd() * 0.14); node(a, r, rnd() > 0.4); }
+  }
+  c.fillStyle = H ? g(215) : P.white;
+  arcText(c, TEXT.top, cx, cy, R * 0.84, -Math.PI / 2, R * 0.102, false, 0.13);
+  c.save(); c.font = `700 ${R * 0.03}px Arial`; c.textAlign = "left"; c.translate(cx + R * 0.6, cy - R * 0.6); c.rotate(0.78); c.fillText("TM", 0, 0); c.restore();
+  arcText(c, TEXT.bottom, cx, cy, R * 0.84, Math.PI / 2, R * 0.102, true, 0.13);
+  c.lineWidth = R * 0.046; c.strokeStyle = H ? g(150) : grad(); c.beginPath(); c.arc(cx, cy, R * 0.725, 0, Math.PI * 2); c.stroke();
+  c.lineWidth = R * 0.004; c.strokeStyle = H ? g(200) : "rgba(226,228,238,0.5)"; for (const r of [0.768, 0.7]) { c.beginPath(); c.arc(cx, cy, R * r, 0, Math.PI * 2); c.stroke(); }
+  c.beginPath(); c.arc(cx, cy, R * 0.698, 0, Math.PI * 2); c.fillStyle = H ? g(30) : P.navy; c.fill();
+  c.save(); c.clip(); c.font = `500 ${R * 0.027}px "Hanken Grotesk", monospace`; c.textAlign = "center"; c.textBaseline = "middle";
+  const rb = rng(3); for (let y = -0.69; y < 0.69; y += 0.046) for (let x = -0.69; x < 0.69; x += 0.038) { const bright = rb() > 0.9; c.fillStyle = H ? g(bright ? 52 : 40) : (bright ? "rgba(143,140,250,0.75)" : "rgba(86,90,160,0.38)"); c.fillText(rb() > 0.5 ? "1" : "0", cx + x * R, cy + y * R); }
+  c.restore();
+  const q = R * 0.385, rad = R * 0.09; c.save();
+  rr(c, cx - q, cy - q, q * 2, q * 2, rad); c.fillStyle = H ? g(175) : grad(); c.fill();
+  const q2 = q - R * 0.03; rr(c, cx - q2, cy - q2, q2 * 2, q2 * 2, rad - R * 0.028); c.fillStyle = H ? g(185) : P.white; c.fill();
+  const m = qrModules(), inner = q2 - R * 0.04, cell = (inner * 2) / m.n; c.fillStyle = H ? g(175) : "#111118";
+  for (let r = 0; r < m.n; r++) for (let cc = 0; cc < m.n; cc++) if (m.at(r, cc)) c.fillRect(cx - inner + cc * cell, cy - inner + r * cell, cell + 0.4, cell + 0.4);
+  c.restore();
+  c.lineWidth = R * 0.034; c.strokeStyle = H ? g(255) : P.silver; c.beginPath(); c.arc(cx, cy, R * 0.983, 0, Math.PI * 2); c.stroke();
+}
+function heightToNormal(hc, S, strength) {
+  const src = hc.getContext("2d").getImageData(0, 0, S, S).data, out = document.createElement("canvas"); out.width = out.height = S;
+  const oc = out.getContext("2d"), img = oc.createImageData(S, S), d = img.data, at = (x, y) => src[((Math.min(S - 1, Math.max(0, y)) * S) + Math.min(S - 1, Math.max(0, x))) * 4] / 255;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1)) - (at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1));
+    const dy = (at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1)) - (at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1));
+    let nx = -dx * strength, ny = dy * strength, nz = 1; const l = Math.hypot(nx, ny, nz); nx /= l; ny /= l; nz /= l;
+    const i = (y * S + x) * 4; d[i] = (nx * 0.5 + 0.5) * 255; d[i + 1] = (ny * 0.5 + 0.5) * 255; d[i + 2] = (nz * 0.5 + 0.5) * 255; d[i + 3] = 255;
+  }
+  oc.putImageData(img, 0, 0); return out;
+}
+const blur = (cv, px) => { const S = cv.width, t = document.createElement("canvas"); t.width = t.height = S; const c = t.getContext("2d"); c.filter = `blur(${px}px)`; c.drawImage(cv, 0, 0); return t; };
+function colorMap(S, P) { const col = document.createElement("canvas"); col.width = col.height = S; drawFace(col.getContext("2d"), S, "c", P); return col; }
+function makeCoinTextures(S, P) {
+  const col = colorMap(S, P);
+  const hgt = document.createElement("canvas"); hgt.width = hgt.height = S; drawFace(hgt.getContext("2d"), S, "h", P);
+  const nrm = heightToNormal(blur(hgt, S / 1280), S, 3.2);
+  const rg = document.createElement("canvas"); rg.width = rg.height = S; const rc = rg.getContext("2d"), hd = hgt.getContext("2d").getImageData(0, 0, S, S).data, im = rc.createImageData(S, S);
+  for (let i = 0; i < hd.length; i += 4) { const h = hd[i], rough = h > 170 ? 0.33 : h > 100 ? 0.42 : h > 35 ? 0.58 : 0.5; im.data[i] = 255; im.data[i + 1] = rough * 255; im.data[i + 2] = 255; im.data[i + 3] = 255; }
+  rc.putImageData(im, 0, 0);
+  const E = 2048, en = document.createElement("canvas"); en.width = E; en.height = 64; { const o = en.getContext("2d"), oi = o.createImageData(E, 64); for (let x = 0; x < E; x++) { const l = 0.5 + 0.5 * Math.sin(((x - 1) / E) * Math.PI * 2 * 180), r = 0.5 + 0.5 * Math.sin(((x + 1) / E) * Math.PI * 2 * 180); let nx = -(r - l) * 6, nz = 1; const len = Math.hypot(nx, nz); for (let y = 0; y < 64; y++) { const i = (y * E + x) * 4; oi.data[i] = (nx / len * 0.5 + 0.5) * 255; oi.data[i + 1] = 128; oi.data[i + 2] = (nz / len * 0.5 + 0.5) * 255; oi.data[i + 3] = 255; } } o.putImageData(oi, 0, 0); }
+  return { color: col, normal: nrm, rough: rg, edgeNormal: en };
+}
+function makeCoin(T, P, envMap) {
+  const tex = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.anisotropy = 8; return t; };
+  const map = tex(T.color, true), normalMap = tex(T.normal), roughMap = tex(T.rough);
+  const faceMat = new THREE.MeshStandardMaterial({ map, normalMap, normalScale: new THREE.Vector2(1, -1), roughnessMap: roughMap, metalnessMap: roughMap, metalness: 1, roughness: 1, envMap, envMapIntensity: 1.1 });
+  const edgeN = tex(T.edgeNormal); edgeN.wrapS = THREE.RepeatWrapping;
+  const silver = new THREE.MeshStandardMaterial({ color: P.metal, metalness: 1, roughness: 0.3, envMap, envMapIntensity: 1.1 });
+  const silverEdge = new THREE.MeshStandardMaterial({ color: P.metal, metalness: 1, roughness: 0.38, normalMap: edgeN, normalScale: new THREE.Vector2(0.9, 0.9), envMap, envMapIntensity: 1.1 });
+  const radius = 1, h = 0.0869, g = new THREE.Group();
+  const faceGeo = new THREE.CircleGeometry(radius * 0.968, 128);
+  const top = new THREE.Mesh(faceGeo, faceMat); top.position.z = h; g.add(top);
+  const bottom = new THREE.Mesh(faceGeo, faceMat); bottom.position.z = -h; bottom.rotation.y = Math.PI; g.add(bottom);
+  const lip = new THREE.LatheGeometry([[0.962, 0], [0.972, h * 0.1], [0.988, h * 0.14], [0.998, h * 0.08], [1, 0]].map((p) => new THREE.Vector2(p[0] * radius, p[1])), 128);
+  const lipTop = new THREE.Mesh(lip, silver); lipTop.rotation.x = Math.PI / 2; lipTop.position.z = h; g.add(lipTop);
+  const lipBot = new THREE.Mesh(lip, silver); lipBot.rotation.x = -Math.PI / 2; lipBot.position.z = -h; g.add(lipBot);
+  const side = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, h * 2, 180, 1, true), silverEdge); side.rotation.x = Math.PI / 2; g.add(side);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.96, radius * 0.96, h * 1.96, 64), new THREE.MeshStandardMaterial({ color: "#101014", metalness: 1, roughness: 0.6 })); core.rotation.x = Math.PI / 2; g.add(core);
+  g.userData = { faceMat, silver, silverEdge, map };
+  return g;
+}
+
+/* ======================================================================
+   2. Scene: a wormhole that lenses a procedural sky (Einstein ring outside, another galaxy inside), the coin, the trip
+   ====================================================================== */
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const canvas = $("#gl"), lerp = (a, b, t) => a + (b - a) * t, clamp = (v, a, b) => Math.min(b, Math.max(a, v)), easeIn = (k) => k * k * k, easeOut = (k) => 1 - Math.pow(1 - k, 3);
+const state = { page: "home", pointer: { x: 0, y: 0, tx: 0, ty: 0 }, flip: 0, flipV: 0, spin: 0, spinV: 0, sound: false, colorway: "onyx", introT: 0, webgl: false, scrollV: 0, drag: null };
+const warp = { on: false, t: 0, to: null, color: new THREE.Color("#3ad0ff"), swapped: false };
+const SIDE_COLOR = { consumer: "#8fdcff", brand: "#d9a8ff", home: "#c9c2ff" };
+const mobile = innerWidth < 700;
+let renderer, composer, bloomPass, scene, camera, coin, sky, stars, streaks, envMap, textures, faceURL, coinScaleTarget = 1;
+const coinPos = new THREE.Vector3(0, 0, 0), coinTarget = new THREE.Vector3(0, 0, 0), portalPos = new THREE.Vector3(0, 0, 0);
+let ringAlpha = 1, wormR = 200, bloomOK = false, streakAlpha = 0, streakSpeed = 0, time = 0;
+const CAMZ = 6, FOV = 32;
+// G keeps the wormhole's state; the names match what the page script calls (tint, ripple, dial = "form again")
+const G = { tint: new THREE.Color("#8fdcff"), tintAmt: 0, tintTarget: 0, pulseT: -10, pulseA: 0, open: 0, forming: true, warpAmt: 0, center: new THREE.Vector2(), sky: new THREE.Vector2() };
+function worldPerPx() { return (2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2) * CAMZ) / innerHeight; }
+
+const SKY_VS = `void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
+const SKY_FS = `precision highp float;
+uniform vec2 uRes, uC, uSky; uniform float uR, uTime, uAlpha, uOpen, uWarp, uSpin, uPulseT, uPulseA, uTintAmt; uniform vec3 uTint;
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < OCT; i++) { v += a * noise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return v; }
+// one star per grid cell (with probability prob), about a pixel wide at 1:1 magnification
+vec3 stars(vec2 p, float sc, float prob, float seed, float floorB){
+  vec2 g = p * sc, id = floor(g), f = fract(g); float h = hash(id + seed);
+  if (h > prob) return vec3(0.0);
+  vec2 o = vec2(hash(id + seed + 1.7), hash(id + seed + 4.3)) * 0.8 + 0.1;
+  float w = 1.15 * sc / uRes.y, d = length(f - o) / w;
+  float b = pow(hash(id + seed + 8.1), 9.0) * 2.4 + floorB, tw = 0.82 + 0.18 * sin(uTime * (0.7 + h * 3.0) + h * 60.0);
+  vec3 tc = mix(vec3(0.68, 0.78, 1.0), vec3(1.0, 0.84, 0.66), hash(id + seed + 2.9));
+  return tc * b * tw * exp(-d * d);
+}
+// this side: dark sky, faint dust and gas, three layers of stars
+vec3 skyA(vec2 p){
+  float n = fbm(p * 1.3 + 3.0), m = fbm(p * 2.6 + 11.0);
+  vec3 c = vec3(0.0025, 0.0025, 0.008) + pow(n, 3.2) * vec3(0.05, 0.025, 0.11) + pow(m, 5.0) * vec3(0.0, 0.06, 0.085);
+  return c + stars(p, 70.0, 0.3, 0.0, 0.016) + stars(p, 160.0, 0.2, 11.0, 0.005) + stars(p, 28.0, 0.2, 23.0, 0.04) * 1.3;
+}
+// the other side: a tilted spiral galaxy with dust lanes, in a denser, bluer field
+vec3 skyB(vec2 o){
+  vec2 g = vec2(o.x, o.y * 1.7); float r = length(g), a = atan(g.y, g.x) + uTime * 0.025;
+  float arms = pow(0.5 + 0.5 * cos(2.0 * (a - 2.4 * log(r + 0.04))), 3.0);
+  float dust = fbm(g * 3.2 + vec2(uTime * 0.01, 0.0)), disk = exp(-r * 3.0), core = exp(-r * r * 70.0);
+  vec3 armCol = mix(vec3(0.30, 0.45, 1.0), vec3(0.75, 0.38, 1.0), dust); armCol = mix(armCol, uTint, uTintAmt * 0.45);
+  vec3 c = vec3(0.003, 0.004, 0.015) + armCol * disk * arms * (0.35 + 0.9 * dust) * 0.9 + vec3(1.0, 0.82, 0.6) * (core * 2.0 + disk * 0.15);
+  c *= 1.0 - 0.65 * smoothstep(0.5, 0.78, dust) * smoothstep(0.02, 0.25, r) * disk;
+  return c + stars(o, 55.0, 0.4, 31.0, 0.02) * 1.2 + stars(o, 130.0, 0.25, 41.0, 0.008);
+}
+mat2 rot(float a){ float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+void main(){
+  vec2 px = gl_FragCoord.xy, d = px - uC; float th = max(length(d), 0.001);
+  float R = max(uR * uOpen, 0.5);
+  // a gravitational wave rolling outward after a tap
+  float age = uTime - uPulseT; d *= 1.0 + uPulseA * 0.025 * sin(th / R * 9.0 - age * 13.0) * exp(-age * 1.8) * exp(-abs(th / R - 1.0 - age * 1.3) * 1.6);
+  th = max(length(d), 0.001); vec2 dir = d / th; float rn = th / R; vec3 col;
+  vec2 toSky = 1.0 / vec2(uRes.y);
+  if (rn > 1.0) {
+    // thin-lens mapping: the sky behind is pulled into an Einstein ring; frame dragging twists it a little
+    float thE = R * 0.98, beta = th - thE * thE / th;
+    vec2 sdir = rot(uSpin * pow(R / th, 2.0)) * dir;
+    col = skyA((uC + sdir * beta - 0.5 * uRes) * toSky + uSky);
+    col += exp(-(rn - 1.0) * 5.0) * vec3(0.05, 0.06, 0.12) * uOpen;          // light piling up just outside the throat
+  } else {
+    // inside: the other universe seen through a sphere, with a squeezed mirror image of this side at the rim
+    vec2 q = d / R; float qq = dot(q, q);
+    vec2 o = rot(uTime * 0.02) * q / sqrt(max(1.0 - qq, 0.03)) * (0.5 / (1.0 + uWarp * 1.5));
+    col = skyB(o);
+    float edge = smoothstep(0.8, 1.0, rn);
+    vec2 back = uC - dir * (R * (1.0 - rn) * 7.0 + R * 0.04);
+    col = mix(col, skyA((back - 0.5 * uRes) * toSky + uSky) * 1.4, edge * 0.85);
+  }
+  col += exp(-pow((th - R) / (1.6 * uRes.y / 900.0), 2.0)) * vec3(0.75, 0.82, 1.0) * 0.45 * uOpen;   // a hair-thin photon ring
+  col *= 1.0 + uWarp * 0.8;
+  gl_FragColor = vec4(col, uAlpha);
+}`;
+
+// stretched starlight for the trip through the throat
+function buildStreaks() {
+  const N = mobile ? 260 : 600, pos = new Float32Array(N * 6), col = new Float32Array(N * 6), seed = new Float32Array(N), cols = ["#e6f0ff", "#ffffff", "#bcd0ff", "#ffe2c4"].map((h) => new THREE.Color(h).multiplyScalar(1.4));
+  for (let i = 0; i < N; i++) { const a = Math.random() * Math.PI * 2, r = 0.5 + Math.random() * 4.5, z = -5 - Math.random() * 45; pos.set([Math.cos(a) * r, Math.sin(a) * r, z, Math.cos(a) * r, Math.sin(a) * r, z - 0.1], i * 6); const c = cols[i % cols.length]; col.set([c.r, c.g, c.b, c.r * 0.08, c.g * 0.08, c.b * 0.08], i * 6); seed[i] = 0.6 + Math.random() * 0.8; }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending, fog: false })); m.userData.seed = seed; m.frustumCulled = false; return m;
+}
+function updateStreaks(dt) {
+  streaks.material.opacity = streakAlpha; streaks.visible = streakAlpha > 0.01; if (!streaks.visible) return;
+  const a = streaks.geometry.attributes.position, seed = streaks.userData.seed, camz = camera.position.z, len = 0.08 + streakSpeed * 0.012;
+  for (let i = 0; i < seed.length; i++) { let z = a.getZ(i * 2) + streakSpeed * seed[i] * dt; if (z > camz - 0.5) { const ang = Math.random() * Math.PI * 2, r = 0.5 + Math.random() * 4.5; z = camz - 30 - Math.random() * 25; a.setXY(i * 2, Math.cos(ang) * r, Math.sin(ang) * r); a.setXY(i * 2 + 1, Math.cos(ang) * r, Math.sin(ang) * r); } a.setZ(i * 2, z); a.setZ(i * 2 + 1, z - len * seed[i]); }
+  a.needsUpdate = true;
+}
+const radial = () => { const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d"), g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.3, "rgba(255,255,255,.45)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); };
+
+function buildScene() {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 1.6)); renderer.setSize(innerWidth, innerHeight, false); renderer.setClearColor("#07060b", 1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
+  scene = new THREE.Scene(); scene.fog = new THREE.Fog("#07060b", 9, 30);
+  camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 0.05, 120); camera.position.set(0, 0, CAMZ); scene.add(camera);
+  const pm = new THREE.PMREMGenerator(renderer); envMap = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose();
+  scene.add(new THREE.AmbientLight("#8e8cf6", 0.35));
+  const key = new THREE.DirectionalLight("#ffffff", 2.2); key.position.set(2, 3, 5); scene.add(key);
+  const fillC = new THREE.DirectionalLight("#9fd8ff", 1.2); fillC.position.set(-4, -1, 3); scene.add(fillC);
+  const fillV = new THREE.DirectionalLight("#b9a2ff", 1.0); fillV.position.set(4, -2, 2); scene.add(fillV);
+  textures = makeCoinTextures(mobile ? 1024 : 1536, PALETTES.onyx); coin = makeCoin(textures, PALETTES.onyx, envMap); scene.add(coin);
+  // the sky with the wormhole: a full-screen plane carried by the camera, drawn first
+  sky = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({ vertexShader: SKY_VS, fragmentShader: SKY_FS.replace(/OCT/g, mobile ? "3" : "4"), transparent: true, depthWrite: false, depthTest: true, toneMapped: false,
+    uniforms: { uRes: { value: new THREE.Vector2(1, 1) }, uC: { value: new THREE.Vector2() }, uSky: { value: new THREE.Vector2() }, uR: { value: 100 }, uTime: { value: 0 }, uAlpha: { value: 1 }, uOpen: { value: 0 }, uWarp: { value: 0 }, uSpin: { value: 0.35 }, uPulseT: { value: -10 }, uPulseA: { value: 0 }, uTintAmt: { value: 0 }, uTint: { value: new THREE.Color("#8fdcff") } } }));
+  sky.renderOrder = -10; sky.position.z = -20; sky.frustumCulled = false; camera.add(sky);
+  // the plain starfield for the other pages
+  const r1 = rng(21), N = mobile ? 800 : 1700, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const a = r1() * Math.PI * 2, rad = 0.6 + Math.pow(r1(), 0.6) * 7; pos[i * 3] = Math.cos(a) * rad; pos[i * 3 + 1] = Math.sin(a) * rad * 0.8; pos[i * 3 + 2] = -1 - r1() * 5; const cy = r1() > 0.7; col[i * 3] = cy ? 0.55 : 0.75; col[i * 3 + 1] = cy ? 0.8 : 0.72; col[i * 3 + 2] = 1; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.BufferAttribute(pos, 3)); sg.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.045, map: radial(), vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending })); scene.add(stars);
+  streaks = buildStreaks(); scene.add(streaks);
+  try { composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera)); bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / (mobile ? 2 : 1), innerHeight / (mobile ? 2 : 1)), 0.5, 0.4, 0.82); composer.addPass(bloomPass); composer.addPass(new OutputPass()); bloomOK = true; } catch (e) { console.warn("bloom off", e); bloomOK = false; }
+  resizeSky(); state.webgl = true;
+}
+function resizeSky() { if (!sky) return; const h = 2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2) * 20; sky.scale.set(h * camera.aspect * 1.1, h * 1.1, 1); const b = renderer.getDrawingBufferSize(new THREE.Vector2()); sky.material.uniforms.uRes.value.copy(b); }
+function resize() { if (!renderer) return; renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); composer?.setSize(innerWidth, innerHeight); resizeSky(); }
+
+function dial() { G.open = 0; G.forming = true; window.__sfx?.kawoosh(); }
+function ripple() { G.pulseT = time; G.pulseA = 1; }
+window.__gate = { tint(hex) { if (warp.on) return; if (hex) { G.tint.set(hex); G.tintTarget = 1; } else G.tintTarget = 0; }, ripple, dial };
+
+function activeSlot() {
+  const slots = $$(`.page.on .coin-anchor`).filter((s) => s.offsetParent !== null); if (!slots.length) return null;
+  let best = null, bd = 1e9; for (const s of slots) { const r = s.getBoundingClientRect(), d = Math.abs(r.top + r.height / 2 - innerHeight / 2); if (d < bd) { bd = d; best = { el: s, r }; } }
+  return best;
+}
+function updateTargets() {
+  const slot = activeSlot(), wpp = worldPerPx();
+  if (slot) { const { r, el } = slot; const cx = r.left + r.width / 2 - innerWidth / 2, cy = innerHeight / 2 - (r.top + r.height / 2); coinTarget.set(cx * wpp, cy * wpp, 0); const sz = innerWidth < 700 ? (+el.dataset.sizeM || +el.dataset.size || 1) : (+el.dataset.size || 1); coinScaleTarget = (Math.min(r.width, r.height) * wpp * 0.5) * sz; }
+  const hero = $("#hero"), hr = hero && state.page === "home" ? hero.getBoundingClientRect() : null;
+  ringAlpha = hr ? clamp(1 - (-hr.top) / (hr.height * 0.75), 0, 1) : 0;
+  wormR = innerWidth < 700 ? (hr && slot ? slot.r.width * 0.41 : innerWidth * 0.4) : Math.min(innerHeight * 0.29, innerWidth * 0.3);
+  if (hr && slot && !warp.on) G.center.set(slot.r.left + slot.r.width / 2, slot.r.top + slot.r.height / 2);   // CSS pixels from the top left
+}
+function openPortal(to) {
+  if (warp.on) return; if (!state.webgl) { window.__showPage?.(to); return; }
+  warp.on = true; warp.t = 0; warp.to = to; warp.swapped = false; warp.color.set(SIDE_COLOR[to] || SIDE_COLOR.home);
+  G.tint.set(to === "brand" ? "#d08cff" : "#8fdcff"); G.tintTarget = 1;
+  if (ringAlpha < 0.5) { G.center.set(innerWidth / 2, innerHeight / 2); G.open = 0; G.forming = true; }
+  document.body.classList.add("warp"); $("#hudtxt").textContent = to === "home" ? "Returning to the portal" : `Entering the ${to === "brand" ? "brands" : "consumer"} portal`; $("#hud").classList.add("on");
+  window.__sfx?.portal(); window.__discover?.("portal");
+}
+window.__openPortal = openPortal;
+let last = 0;
+function frame(now) {
+  requestAnimationFrame(frame); if (!renderer || document.hidden) return;
+  const dt = Math.min(0.05, (now - last) / 1000 || 0.016); last = now; time += dt;
+  const p = state.pointer; p.x = lerp(p.x, p.tx, 0.06); p.y = lerp(p.y, p.ty, 0.06);
+  updateTargets();
+  state.introT = Math.min(1, state.introT + dt / 1.6); const it = easeOut(state.introT);
+  // the trip: the throat swells until the far galaxy fills the screen, starlight stretches, we land; the camera always returns
+  let k = 0;
+  if (warp.on) {
+    warp.t += dt / 1.9; const t = warp.t;
+    if (!warp.swapped) {
+      k = easeIn(clamp(t / 0.6, 0, 1));
+      G.center.lerp(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.12);
+      camera.position.z = CAMZ - (CAMZ + 2.4) * k; streakAlpha = clamp((k - 0.35) / 0.4, 0, 1); streakSpeed = 15 + k * 150;
+      if (t >= 0.6) { warp.swapped = true; camera.position.z = CAMZ; const f = $("#flash"); f.style.setProperty("--fc", "#" + warp.color.getHexString()); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go"); $("#hud").classList.remove("on"); document.body.classList.remove("warp"); window.__showPage?.(warp.to); window.__sfx?.chime(); }
+    } else {
+      const land = 1 - clamp((t - 0.6) / 0.4, 0, 1);
+      camera.position.z = CAMZ; streakAlpha = land; streakSpeed = 20 + 140 * land * land;
+      if (t >= 1) { warp.on = false; G.tintTarget = 0; streakAlpha = 0; }
+    }
+  } else camera.position.z = CAMZ;
+  const vis = warp.on && !warp.swapped ? 1 : ringAlpha * it;
+  // the coin follows its slot; during the dive it falls into the throat
+  const pull = warp.on && !warp.swapped, wpp = worldPerPx();
+  const throat = new THREE.Vector3((G.center.x - innerWidth / 2) * wpp, (innerHeight / 2 - G.center.y) * wpp, -0.3);
+  coinPos.lerp(pull ? throat : coinTarget, pull ? 0.2 : 0.12);
+  coin.position.copy(coinPos); coin.position.y += (1 - it) * 2.2 + Math.sin(time * 1.1) * 0.03;
+  const sc = coinScaleTarget * (0.6 + 0.4 * it) * (pull ? 1 - k * 0.9 : 1);
+  if (!coin.userData.placed) { coin.userData.placed = true; coin.scale.setScalar(sc); coinPos.copy(coinTarget); }
+  coin.scale.setScalar(lerp(coin.scale.x, sc, 0.15));
+  state.spinV *= 0.95; state.spin += dt * (0.55 + state.flipV * 0.4 + Math.abs(state.scrollV) * 0.004) + state.spinV * dt; state.scrollV *= 0.9;
+  state.flipV *= 0.94; state.flip += state.flipV * dt; if (Math.abs(state.flipV) < 0.02) { const target = Math.round(state.flip / Math.PI) * Math.PI; state.flip = lerp(state.flip, target, 0.08); }
+  coin.rotation.set(state.flip + p.y * -0.35, state.spin, p.x * 0.12);
+  // the wormhole: it forms on arrival, breathes very slightly, and the sky behind drifts with the pointer
+  sky.visible = vis > 0.01;
+  if (sky.visible) {
+    if (G.forming) { G.open = Math.min(1, G.open + dt / (warp.on ? 0.3 : 1.8)); if (G.open >= 1) G.forming = false; }
+    G.tintAmt = lerp(G.tintAmt, G.tintTarget, 0.05); if (G.pulseA > 0) G.pulseA = Math.max(0, G.pulseA - dt * 0.35);
+    G.sky.set(p.x * -0.06 + time * 0.004, p.y * -0.04);
+    const u = sky.material.uniforms, pr = renderer.getPixelRatio(), open = easeOut(G.open), breathe = 1 + Math.sin(time * 0.7) * 0.008;
+    u.uTime.value = time; u.uAlpha.value = vis; u.uOpen.value = open; u.uWarp.value = k; u.uR.value = wormR * pr * breathe * (1 + 9 * k * k);
+    u.uC.value.set(G.center.x * pr, (innerHeight - G.center.y) * pr); u.uSky.value.copy(G.sky); u.uPulseT.value = G.pulseT; u.uPulseA.value = G.pulseA; u.uTint.value.copy(G.tint); u.uTintAmt.value = G.tintAmt;
+  }
+  updateStreaks(dt);
+  stars.visible = vis < 0.99; stars.rotation.z = time / 60; stars.position.set(p.x * -0.15, p.y * -0.1, 0); stars.material.opacity = 0.75 * (1 - vis);
+  if (bloomOK && (vis > 0.02 || streakAlpha > 0.02)) { bloomPass.strength = 0.5 + k * 0.8; composer.render(); } else renderer.render(scene, camera);
+}
+/* ======================================================================
+   3. Sound (optional, synthesised)
+   ====================================================================== */
+let actx = null;
+const tone = (f, t, dur, type = "sine", vol = 0.12, slide) => { if (!state.sound) return; try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + t; o.type = type; o.frequency.setValueAtTime(f, t0); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t0 + dur); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + dur + 0.05); } catch (e) {} };
+const sfx = { tick: () => tone(1800, 0, 0.05, "triangle", 0.04), chime: () => { tone(660, 0, 0.5); tone(990, 0.08, 0.6); tone(1320, 0.16, 0.9, "sine", 0.08); }, coin: () => { tone(1200, 0, 0.12, "square", 0.03); tone(1600, 0.06, 0.18, "square", 0.03); }, whoosh: () => tone(220, 0, 0.35, "sawtooth", 0.03), portal: () => { tone(90, 0, 1.3, "sawtooth", 0.05, 900); tone(440, 0.2, 1.0, "sine", 0.05, 1760); }, draw: () => tone(2400, 0, 0.03, "triangle", 0.015), dial: () => { tone(520, 0, 0.07, "square", 0.025); tone(180, 0.02, 0.12, "triangle", 0.04); }, kawoosh: () => { tone(55, 0, 1.1, "sawtooth", 0.06, 420); tone(2200, 0.05, 0.6, "sine", 0.035, 260); }, zap: () => tone(3200, 0, 0.06, "sawtooth", 0.008, 700) };
+window.__sfx = sfx;
+const soundBtn = $("#sound");
+function setSound(on) { state.sound = on; soundBtn.classList.toggle("on", on); soundBtn.setAttribute("aria-pressed", String(on)); soundBtn.setAttribute("aria-label", on ? "Turn sound off" : "Turn sound on"); soundBtn.querySelector("span").textContent = on ? "Sound on" : "Sound off"; try { localStorage.setItem("pr-sound", on ? "1" : "0"); } catch (e) {} if (on) { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume(); } catch (e) {} sfx.chime(); } }
+soundBtn.addEventListener("click", () => setSound(!state.sound));
+try { if (localStorage.getItem("pr-sound") === "1") { state.sound = true; soundBtn.classList.add("on"); soundBtn.setAttribute("aria-pressed", "true"); soundBtn.querySelector("span").textContent = "Sound on"; } } catch (e) {}
+
+/* ======================================================================
+   4. Router: three pages in one file; picking a side flies through the portal
+   ====================================================================== */
+const NAV = { home: [["#two-sides", "Two sides"], ["#how-home", "How it works"], ["#story", "Maya's story"]], consumer: [["#how-consumer", "How it works"], ["#wallet", "Your wallet"], ["#suggest", "Suggest a brand"], ["#contact-consumer", "Contact"]], brand: [["#why", "Why a coin"], ["#compare", "Before & after"], ["#calc", "Estimate"], ["#token", "The token"], ["#pricing", "Pricing"], ["#contact-brand", "Contact"]] };
+const nav = $("#navlinks"), menu = $("#menu"), burger = $("#burger");
+function renderNav() { const items = NAV[state.page].map(([h, t]) => `<a href="${h}" data-anchor="${h.slice(1)}">${t}</a>`).join(""); nav.innerHTML = items; menu.innerHTML = items + `<a href="#consumer" data-route="consumer">Consumer side</a><a href="#brand" data-route="brand">Brand side</a>`; }
+// decode effect: text nodes settle from scrambled characters into the real words
+const GLYPHS = "01PORTAL#%&✦<>/";
+function decode(root) { if (!root) return; const nodes = []; const walk = (n) => { for (const c of n.childNodes) { if (c.nodeType === 3 && c.nodeValue.trim()) nodes.push({ n: c, s: c.nodeValue }); else if (c.nodeType === 1) walk(c); } }; walk(root); const t0 = performance.now(); const step = (now) => { const k = Math.min(1, (now - t0) / 900); for (const { n, s } of nodes) { let out = ""; for (let i = 0; i < s.length; i++) { const ch = s[i]; out += ch === " " || i < k * s.length ? ch : GLYPHS[(i * 7 + Math.floor(now / 40)) % GLYPHS.length]; } n.nodeValue = out; } if (k < 1) requestAnimationFrame(step); else nodes.forEach(({ n, s }) => (n.nodeValue = s)); }; requestAnimationFrame(step); }
+function showPage(name, { anchor = null, land = true } = {}) {
+  if (!NAV[name]) name = "home";
+  $$(".page").forEach((p) => p.classList.toggle("on", p.dataset.page === name)); state.page = name; renderNav();
+  $("#sw-c").classList.toggle("on", name === "consumer"); $("#sw-b").classList.toggle("on", name === "brand");
+  document.title = name === "home" ? "Portal Rewards" : name === "consumer" ? "Portal Rewards · For consumers" : "Portal Rewards · For brands";
+  if (anchor) { const el = document.getElementById(anchor); if (el) el.scrollIntoView({ behavior: "instant", block: "start" }); } else scrollTo({ top: 0, behavior: "instant" });
+  watchReveal(); state.introT = land ? 0.35 : 0.6; coinPos.copy(coinTarget); state.flipV = land ? 5 : 0;
+  if (land) $$(".page.on [data-decode]").forEach(decode);
+  if (land && name === "home") window.__gate?.dial();
+}
+window.__showPage = (n) => showPage(n);
+function navigate(route, anchor, push = true) {
+  if (route !== state.page) { if (anchor) showPage(route, { anchor, land: false }); else openPortal(route); }
+  else if (anchor) { const el = document.getElementById(anchor); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); } else scrollTo({ top: 0, behavior: "smooth" });
+  if (push) history.replaceState(null, "", "#" + (anchor && route !== "home" && !/^contact-/.test(anchor) ? anchor : route)); menu.hidden = true; burger.setAttribute("aria-expanded", "false");
+}
+document.addEventListener("click", (e) => { const a = e.target.closest("a[data-route], a[data-anchor]"); if (!a) return; e.preventDefault(); sfx.tick(); navigate(a.dataset.route || state.page, a.dataset.anchor || null); });
+const ANCHOR_PAGE = { "two-sides": "home", "how-home": "home", story: "home", "how-consumer": "consumer", wallet: "consumer", suggest: "consumer", "contact-consumer": "consumer", why: "brand", compare: "brand", calc: "brand", token: "brand", pricing: "brand", "contact-brand": "brand" };
+function fromHash() { const h = (location.hash || "#home").slice(1).replace(/[^a-z0-9-]/gi, ""); if (NAV[h]) showPage(h, { land: false }); else if (ANCHOR_PAGE[h]) showPage(ANCHOR_PAGE[h], { anchor: h, land: false }); else showPage("home", { land: false }); }
+addEventListener("hashchange", fromHash);
+burger.addEventListener("click", () => { const open = menu.hidden; menu.hidden = !open; burger.setAttribute("aria-expanded", String(open)); });
+$("#again").addEventListener("click", () => { if (state.page === "home") { scrollTo({ top: 0, behavior: "smooth" }); setTimeout(() => { state.introT = 0; state.flipV = 6; window.__gate?.dial(); }, 600); } else openPortal("home"); });
+// hovering a side previews its colour in the gate
+[["#hero .btn.c, .side.c", "#3ad0ff"], ["#hero .btn.b, .side.b", "#ff4fd8"]].forEach(([sel, col]) => $$(sel).forEach((el) => { el.addEventListener("pointerenter", () => window.__gate?.tint(col)); el.addEventListener("pointerleave", () => window.__gate?.tint(null)); el.addEventListener("focus", () => window.__gate?.tint(col)); el.addEventListener("blur", () => window.__gate?.tint(null)); }));
+
+/* ======================================================================
+   5. Page furniture: demos, storyboard, forms, reveal, cursor, discoveries
+   ====================================================================== */
+$$("[data-demos]").forEach((host) => host.append($("#demo-tpl").content.cloneNode(true)));
+$$("[data-contact]").forEach((host) => host.append($("#contact-tpl").content.cloneNode(true)));
+// the pouch illustration (SVG) used by the demo and the brand argument
+const POUCH = `<defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#231e38"/><stop offset="1" stop-color="#0d0b14"/></linearGradient><radialGradient id="pglow" cx=".8" cy=".9" r=".6"><stop offset="0" stop-color="#ffb070" stop-opacity=".5"/><stop offset=".5" stop-color="#9a6bff" stop-opacity=".25"/><stop offset="1" stop-color="#9a6bff" stop-opacity="0"/></radialGradient></defs>
+<path d="M14 40 Q10 24 24 20 L96 20 Q110 24 106 40 L110 150 Q110 166 94 166 L26 166 Q10 166 10 150 Z" fill="url(#pg)" stroke="rgba(255,255,255,.14)"/>
+<ellipse cx="86" cy="140" rx="36" ry="30" fill="url(#pglow)"/>
+<g class="flap"><path d="M20 22 Q60 12 100 22 L96 34 Q60 26 24 34 Z" fill="#2a2544" stroke="rgba(255,255,255,.18)"/><path class="zip" d="M24 29 L96 29" stroke="#cfc8e6" stroke-width="2" stroke-dasharray="4 3"/></g>
+<g class="beans" fill="#5a3b2a" stroke="#8a5a3e"><ellipse cx="34" cy="112" rx="7" ry="4.5" transform="rotate(-25 34 112)"/><ellipse cx="50" cy="128" rx="7" ry="4.5" transform="rotate(20 50 128)"/><ellipse cx="30" cy="142" rx="7" ry="4.5" transform="rotate(-10 30 142)"/></g>
+<text x="60" y="152" text-anchor="middle" font-family="DM Mono, monospace" font-size="7" letter-spacing="2" fill="#8f89a6">NORTHPINE</text>`;
+$$("svg[data-pouch]").forEach((s) => (s.innerHTML = POUCH));
+
+let revealObs;
+function watchReveal() { revealObs?.disconnect(); revealObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); revealObs.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px", threshold: 0.08 }); $$(".page.on .rv").forEach((el) => { if (el.getBoundingClientRect().top < innerHeight) el.classList.add("in"); else revealObs.observe(el); }); }
+function paintFaces() { if (!faceURL) return; $$("img.coin-face").forEach((img) => { if (!img.src) img.src = faceURL; }); }
+
+// discoveries: a light scavenger hunt across the interactions
+const FOUND = new Set(), DISC_N = 9, discEl = $("#disc"), discN = $("#discn");
+function discover(key) { if (FOUND.has(key)) return; FOUND.add(key); discN.textContent = FOUND.size; discEl.classList.remove("bump"); void discEl.offsetWidth; discEl.classList.add("bump"); if (FOUND.size >= DISC_N) { discEl.classList.add("full"); discEl.querySelector("span:last-child").textContent = "/ 9 · portal charged"; state.flipV = 8; sfx.chime(); } else sfx.tick(); }
+window.__discover = discover;
+discEl.addEventListener("click", () => { discEl.querySelector("span:last-child").textContent = FOUND.size >= DISC_N ? "/ 9 · portal charged" : "/ 9 · flip, drag, open, scan, redeem, recolour, slide, fix, warp"; setTimeout(() => { if (FOUND.size < DISC_N) discEl.querySelector("span:last-child").textContent = "/ 9 found"; }, 4000); });
+
+// demos: open the pouch (hover opens, tap pins), scan with progress, redeem with flying coins
+function setPouch(d, open, pin) { d.classList.toggle("open", open); if (pin !== undefined) d.dataset.pin = pin ? "1" : ""; d.querySelector(".state").textContent = open ? "Open · there it is" : "Closed · tap to open"; if (open) { discover("open"); sfx.coin(); for (let i = 0; i < 6; i++) { const s = document.createElement("i"); s.className = "spark"; s.style.left = "50%"; s.style.top = "40%"; d.appendChild(s); s.animate([{ transform: "translate(0,0)", opacity: 1 }, { transform: `translate(${(Math.random() - .5) * 160}px, ${-40 - Math.random() * 120}px)`, opacity: 0 }], { duration: 800 + Math.random() * 500, easing: "cubic-bezier(.2,.7,.2,1)" }).onfinish = () => s.remove(); } } }
+$$(".demo.find").forEach((d) => { d.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse" && !d.dataset.pin) setPouch(d, true); }); d.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse" && !d.dataset.pin) setPouch(d, false); }); d.addEventListener("click", () => { const open = !d.classList.contains("open") || !d.dataset.pin; setPouch(d, open, open); }); d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); d.click(); } }); });
+function runScan(scan) { if (scan.classList.contains("go")) return; scan.classList.add("go"); scan.querySelector(".state").textContent = "Scanning…"; sfx.tick(); setTimeout(() => { scan.querySelector(".toast").classList.add("show"); scan.querySelector(".state").textContent = "Verified · +50 coins"; sfx.chime(); bumpWallet(50); discover("scan"); }, 2200); setTimeout(() => { scan.classList.remove("go"); scan.querySelector(".toast").classList.remove("show"); scan.querySelector(".state").textContent = "Ready · tap to scan"; }, 4400); }
+$$(".demo.scan").forEach((s) => { s.addEventListener("click", () => runScan(s)); s.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); runScan(s); } }); });
+document.addEventListener("click", (e) => { const redeem = e.target.closest(".demo.earn .redeem"); if (!redeem) return; const w = redeem.closest(".wallet"), big = w.querySelector(".big"), cur = +big.dataset.count; if (cur < 500) { w.querySelector(".left").textContent = "not enough yet"; return; } setCount(big, cur - 500); w.querySelector(".bar i").style.width = ((cur - 500) % 1500 / 1500 * 100) + "%"; w.querySelector(".left").textContent = (1500 - (cur - 500) % 1500) + " to go"; flyCoins(redeem); sfx.coin(); discover("redeem"); });
+function setCount(el, v) { const from = +el.dataset.count, t0 = performance.now(); el.dataset.count = v; const step = (now) => { const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3); el.textContent = Math.round(from + (v - from) * e).toLocaleString("en-US"); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+function bumpWallet(n) { $$(".page.on .demo.earn .big").forEach((b) => { const v = +b.dataset.count + n; setCount(b, v); const w = b.closest(".wallet"); w.querySelector(".bar i").style.width = (v % 1500 / 1500 * 100) + "%"; w.querySelector(".left").textContent = (1500 - v % 1500) + " to go"; }); const bal = $("#bal"); if (bal) setCount(bal, +bal.dataset.count + n); }
+function flyCoins(btn) { const host = btn.closest(".demo, .app"), r = btn.getBoundingClientRect(), hr = host.getBoundingClientRect(); for (let i = 0; i < 7; i++) { const f = document.createElement("img"); f.className = "fly"; f.src = faceURL || ""; f.style.left = (r.left - hr.left + r.width / 2 - 13) + "px"; f.style.top = (r.top - hr.top) + "px"; host.appendChild(f); const dx = (Math.random() - 0.5) * 240, dy = -120 - Math.random() * 160; f.animate([{ transform: "translate(0,0) scale(.6)", opacity: 1 }, { transform: `translate(${dx}px, ${dy}px) scale(1.1) rotate(${(Math.random() - .5) * 400}deg)`, opacity: 0 }], { duration: 900 + Math.random() * 400, easing: "cubic-bezier(.2,.7,.2,1)" }).onfinish = () => f.remove(); } }
+// wallet mockup
+const BAL = { brand: ["Brand Coins · never expire", 1240], portal: ["Portal Coins · every brand", 3860] }; $("#bal").dataset.count = 1240;
+$$("#app .tabs button").forEach((b) => b.addEventListener("click", () => { $$("#app .tabs button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", String(x === b)); }); const [lab, v] = BAL[b.dataset.tab]; $("#bal-lab").textContent = lab; setCount($("#bal"), v); sfx.tick(); }));
+$("#app .cta").addEventListener("click", (e) => { flyCoins(e.currentTarget); sfx.coin(); discover("redeem"); });
+const bigObs = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; $$("#biglist span").forEach((s, i) => setTimeout(() => s.classList.add("lit"), 200 + i * 260)); bigObs.disconnect(); }), { threshold: 0.4 }); bigObs.observe($("#biglist"));
+
+/* ---------- Maya's story: a hand-drawn storyboard, one panel per step ---------- */
+let skS = 5; const skR = () => { skS = (skS * 16807) % 2147483647; return skS / 2147483647 - 0.5; }, f1 = (v) => v.toFixed(1);
+const skL = (x1, y1, x2, y2, j = 1.2) => { const dx = x2 - x1, dy = y2 - y1; return `M${f1(x1 - dx * .02 + skR() * j)},${f1(y1 - dy * .02 + skR() * j)} Q${f1((x1 + x2) / 2 + skR() * j * 2.4)},${f1((y1 + y2) / 2 + skR() * j * 2.4)} ${f1(x2 + dx * .02 + skR() * j)},${f1(y2 + dy * .02 + skR() * j)}`; };
+const skBox = (x, y, w, h, j) => [skL(x, y, x + w, y, j), skL(x + w, y, x + w, y + h, j), skL(x + w, y + h, x, y + h, j), skL(x, y + h, x, y - 1, j)].join(" ");
+const skCirc = (cx, cy, r) => { let d = ""; for (let k = 0; k <= 14; k++) { const a = (k / 13) * Math.PI * 2 + .3, rr2 = r * (1 + skR() * .12); d += `${k ? " L" : "M"}${f1(cx + Math.cos(a) * rr2)},${f1(cy + Math.sin(a) * rr2)}`; } return d; };
+const S_ = (d, a, b, cls = "") => ({ t: "p", d, a, b, cls }), W_ = (x, y, txt, a, b, size = 20, cls = "") => ({ t: "w", x, y, txt, a, b, size, cls });
+function storyPanels() {
+  skS = 5; const P = [[0, 0], [400, 0], [0, 280], [400, 280]];   // four panels on an 800×560 board
+  const pouch = (x, y) => [S_(`${skL(x + 8, y + 24, x + 92, y + 24)} ${skL(x + 92, y + 24, x + 98, y + 120)} ${skL(x + 98, y + 120, x + 2, y + 120)} ${skL(x + 2, y + 120, x + 8, y + 24)}`, 0, .22), S_(skL(x + 14, y + 34, x + 86, y + 34), .22, .28, "dim"), W_(x + 20, y + 110, "beans", .3, .36, 16)];
+  return [
+    [...pouch(60, 70), ...[0, 1, 2, 3].map((i) => S_(skCirc(80 + (i % 2) * 26 + skR() * 6, 150 + Math.floor(i / 2) * 18 + skR() * 4, 6), .36 + i * .03, .4 + i * .03)),
+      S_(skCirc(190, 110, 34), .48, .6, "am"), S_(skBox(176, 96, 28, 28, 1), .6, .68, "am"), S_(`${skL(182, 103, 190, 103)} ${skL(182, 112, 196, 112)} ${skL(190, 103, 190, 118)}`, .68, .74, "am"),
+      S_(`${skL(240, 120, 286, 100)} M278,98 L288,99 M283,106 L288,99`, .76, .84, "dim"), W_(292, 96, "the coin!", .84, .96, 24, "am")],
+    [S_(skBox(470, 50, 100, 180, 1.4), 0, .2), S_(skL(500, 62, 540, 62), .2, .24, "dim"), S_(`${skL(486, 92, 486, 78)} ${skL(486, 78, 500, 78)} M540,78 L554,78 M554,78 L554,92 M486,186 L486,200 M486,200 L500,200 M554,186 L554,200 M554,200 L540,200`, .24, .36, "cy"),
+      S_(skCirc(520, 140, 30), .36, .48, "am"), S_(skBox(508, 128, 24, 24, 1), .48, .54, "am"), S_(skL(490, 118, 550, 118), .56, .62, "cy"), S_(skL(490, 164, 550, 164), .62, .68, "cy"),
+      S_(`${skL(600, 110, 640, 110)} ${skL(600, 125, 650, 125)} ${skL(600, 140, 630, 140)}`, .7, .8, "dim"), S_(`${skL(585, 150, 600, 166)} ${skL(600, 166, 626, 134)}`, .8, .88, "cy"), W_(600, 198, "scan · 2 seconds", .88, 1, 20, "cy")],
+    [S_(`${skL(70, 420, 70, 500)} ${skL(70, 500, 210, 500)} ${skL(210, 500, 210, 420)} ${skL(210, 420, 70, 420)}`, 0, .2), S_(`${skL(70, 420, 90, 395)} ${skL(90, 395, 230, 395)} ${skL(230, 395, 210, 420)}`, .2, .32), S_(skBox(170, 448, 34, 24, 1), .32, .4, "dim"), S_(skCirc(187, 460, 5), .4, .44),
+      ...[0, 1, 2].map((i) => S_(skCirc(120 + i * 34, 330 + (i % 2) * 18, 13), .46 + i * .08, .54 + i * .08, "am")), ...[0, 1, 2].map((i) => S_(`${skL(126 + i * 34, 350 + (i % 2) * 18, 140 + i * 24, 392)}`, .52 + i * .08, .58 + i * .08, "dim")),
+      W_(240, 365, "+50", .78, .88, 42, "am"), W_(238, 395, "never expire", .88, 1, 20)],
+    [S_(skCirc(480, 350, 24), 0, .12), S_(`${skL(440, 420, 452, 388)} ${skL(452, 388, 508, 388)} ${skL(508, 388, 520, 420)}`, .12, .26), S_(skBox(560, 330, 150, 60, 1.2), .3, .44, "cy"), S_(`${skL(560, 390, 552, 404)} ${skL(552, 404, 580, 390)}`, .44, .5, "cy"),
+      W_(574, 356, "Maya just scanned", .5, .66, 19, "cy"), W_(574, 378, "bag #0412  ✓", .66, .74, 19, "cy"),
+      ...pouch(440, 430), W_(560, 480, "a real person,", .78, .9, 22, "am"), W_(560, 506, "not an invoice", .9, 1, 22, "am")],
+  ].map((items, i) => ({ items, panel: P[i] }));
+}
+const PENCIL = `<g id="pen"><path d="M0,0 L-5,-14 L5,-14 Z" fill="#e9c896"/><rect x="-5" y="-110" width="10" height="96" fill="#f6c343"/><rect x="-5" y="-110" width="3.5" height="96" fill="#ffd96b"/><rect x="-5.5" y="-122" width="11" height="12" fill="#b8bcc6"/><rect x="-5.5" y="-135" width="11" height="13" rx="3" fill="#f08a8a"/></g>`;
+const board = $("#board"), PANELS = storyPanels(); let boardItems = [], boardT = PANELS.map(() => 0), boardStep = 0, boardPlaying = -1, boardAuto = null;
+function buildBoard() {
+  const svg = `<svg viewBox="0 0 800 560" aria-label="Hand-drawn storyboard of Maya finding, scanning and earning with a coin">${PANELS.map(({ panel: [x, y] }, i) => `<rect class="pane" x="${x + 10}" y="${y + 10}" width="380" height="260" rx="10"/><text class="hw" x="${x + 24}" y="${y + 36}" font-size="18" fill="#5a5570">${i + 1}</text>`).join("")}${PANELS.map(({ items }, pi) => items.map((it, k) => it.t === "p" ? `<path class="sk ${it.cls}" data-p="${pi}" data-k="${k}" d="${it.d}"/>` : `<text class="hw ${it.cls}" data-p="${pi}" data-k="${k}" x="${it.x}" y="${it.y}" font-size="${it.size}">${it.txt}</text>`).join("")).join("")}${PENCIL}</svg>`;
+  board.insertAdjacentHTML("afterbegin", svg);
+  boardItems = PANELS.map(({ items }, pi) => items.map((it, k) => { const el = board.querySelector(`[data-p="${pi}"][data-k="${k}"]`); const o = { ...it, el }; if (it.t === "p") { o.len = el.getTotalLength(); el.style.strokeDasharray = `${o.len} ${o.len}`; } return o; }));
+  renderBoard();
+}
+const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+function renderBoard() {
+  let tip = null;
+  boardItems.forEach((items, pi) => { const T = boardT[pi]; items.forEach((it) => { const p = seg(T, it.a, it.b); if (it.t === "p") { it.el.style.strokeDashoffset = (it.len * (1 - p)).toFixed(1); it.el.style.visibility = p > 0 ? "visible" : "hidden"; it.el.style.strokeLinecap = p < 1 ? "butt" : ""; if (p > 0 && p < 1) { const pt = it.el.getPointAtLength(it.len * p); tip = [pt.x, pt.y]; } } else { it.el.style.visibility = p > 0 ? "visible" : "hidden"; it.el.style.clipPath = p >= 1 || p <= 0 ? "none" : `inset(-40% ${(100 - p * 100).toFixed(1)}% -40% -6%)`; if (p > 0 && p < 1) { const b = it.el.getBBox(); tip = [b.x + b.width * p, b.y + b.height * 0.8]; } } }); });
+  const pen = board.querySelector("#pen"); if (pen) { pen.style.opacity = tip ? 1 : 0; if (tip) pen.setAttribute("transform", `translate(${tip[0].toFixed(1)} ${tip[1].toFixed(1)}) rotate(26)`); }
+}
+function drawPanel(i) {
+  boardStep = i; $$("#timeline li").forEach((li, j) => li.classList.toggle("on", j === i));
+  for (let j = 0; j < PANELS.length; j++) if (j < i && boardT[j] < 1) boardT[j] = 1; else if (j > i) boardT[j] = 0;
+  if (boardT[i] >= 1) boardT[i] = 0; boardPlaying = i; const t0 = performance.now(); sfx.draw();
+  const step = (now) => { if (boardPlaying !== i) return; boardT[i] = Math.min(1, (now - t0) / 1700); renderBoard(); if (boardT[i] < 1) requestAnimationFrame(step); else boardPlaying = -1; }; requestAnimationFrame(step);
+}
+function playStory() { clearTimeout(boardAuto); boardT = PANELS.map(() => 0); let i = 0; const next = () => { drawPanel(i); i++; if (i < PANELS.length) boardAuto = setTimeout(next, 2100); }; next(); discover("story"); }
+$$("#timeline li").forEach((li) => li.addEventListener("click", () => { clearTimeout(boardAuto); drawPanel(+li.dataset.step); }));
+$("#replay").addEventListener("click", playStory);
+const storyObs = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; playStory(); storyObs.disconnect(); }), { threshold: 0.35 }); storyObs.observe(board);
+
+// suggest a brand
+$("#suggest-form").addEventListener("submit", (e) => { e.preventDefault(); const inp = $("#brand-name"), v = inp.value.trim(), f = inp.closest(".field"), msg = $("#brand-msg"); if (v.length < 2) { f.classList.add("err"); msg.textContent = "Type a brand name first."; return; } f.classList.remove("err"); msg.textContent = ""; const chip = document.createElement("span"); chip.innerHTML = `${v.replace(/[<>&]/g, "")} <b style="color:var(--green)">✓ noted</b>`; $("#chips").prepend(chip); inp.value = ""; sfx.chime(); });
+// contact forms: validate in the page, and be honest that this prototype doesn't send
+$$("form.form").forEach((form) => form.addEventListener("submit", (e) => { e.preventDefault(); let ok = true; $$(".field", form).forEach((f) => { const inp = f.querySelector("input, textarea"), msg = f.querySelector(".msg"); let err = ""; if (inp.required && !inp.value.trim()) err = "This one's needed."; else if (inp.type === "email" && inp.value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(inp.value)) err = "That email doesn't look right."; f.classList.toggle("err", !!err); msg.textContent = err; if (err) ok = false; }); if (!ok) { sfx.tick(); return; } const okb = form.querySelector(".ok"); okb.hidden = false; okb.textContent = `Thanks, ${form.name.value.trim().split(" ")[0]}. In the live site this goes to the Portal team; this prototype keeps it on your screen.`; sfx.chime(); }));
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-copy]"); if (!b) return; navigator.clipboard?.writeText(b.dataset.copy).then(() => { b.textContent = "Copied"; setTimeout(() => (b.textContent = "Copy"), 1600); }).catch(() => { const r = document.createRange(); r.selectNodeContents(b.previousElementSibling); getSelection().removeAllRanges(); getSelection().addRange(r); }); });
+// brand: arguments progress, comparison (hover pairs, click fixes), calculator, colorways
+const args = $$("#args .arg"); const argObs = new IntersectionObserver((es) => es.forEach((e) => { if (!e.isIntersecting) return; const i = args.indexOf(e.target); args.forEach((a, j) => a.classList.toggle("on", j === i)); $("#argbar").style.width = ((i + 1) / args.length * 100) + "%"; }), { rootMargin: "-40% 0px -45% 0px" }); args.forEach((a) => argObs.observe(a));
+$$("#cmp .li").forEach((li) => { const pair = () => $$(`#cmp .li[data-i="${li.dataset.i}"]`); li.tabIndex = 0; li.addEventListener("mouseenter", () => pair().forEach((x) => x.classList.add("hl"))); li.addEventListener("mouseleave", () => $$("#cmp .li").forEach((x) => x.classList.remove("hl"))); li.addEventListener("click", () => { if (!li.closest(".no")) return; li.classList.add("fixed"); const yes = pair().find((x) => x.closest(".yes")); yes.classList.remove("pulse"); void yes.offsetWidth; yes.classList.add("pulse"); sfx.coin(); discover("fix"); }); li.addEventListener("keydown", (e) => { if (e.key === "Enter") li.click(); }); });
+const R = { units: $("#r-units"), scan: $("#r-scan"), repeat: $("#r-repeat"), aov: $("#r-aov") }, money = (v) => "$" + Math.round(v).toLocaleString("en-US");
+function calc() { const u = +R.units.value, s = +R.scan.value / 100, rp = +R.repeat.value / 100, a = +R.aov.value; const named = u * s, orders = named * rp, rev = orders * a; $("#o-units").textContent = u.toLocaleString("en-US"); $("#o-scan").textContent = Math.round(s * 100) + "%"; $("#o-repeat").textContent = Math.round(rp * 100) + "%"; $("#o-aov").textContent = money(a); $("#c-named").textContent = Math.round(named).toLocaleString("en-US"); $("#c-orders").textContent = Math.round(orders).toLocaleString("en-US"); $("#c-rev").textContent = money(rev); $("#c-year").textContent = money(rev * 12); Object.values(R).forEach((r) => r.style.setProperty("--p", ((r.value - r.min) / (r.max - r.min) * 100) + "%")); }
+Object.values(R).forEach((r) => r.addEventListener("input", () => { calc(); discover("slide"); })); calc();
+$$(".sw button").forEach((b) => b.addEventListener("click", () => { $$(".sw button").forEach((x) => x.classList.toggle("on", x === b)); const key = b.dataset.color; state.colorway = key; sfx.coin(); discover("recolour"); if (!coin) return; const P = PALETTES[key]; const t = new THREE.CanvasTexture(colorMap(mobile ? 1024 : 1536, P)); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; coin.userData.faceMat.map.dispose(); coin.userData.faceMat.map = t; coin.userData.faceMat.needsUpdate = true; coin.userData.silver.color.set(P.metal); coin.userData.silverEdge.color.set(P.metal); state.flipV = 4; }));
+
+/* ---------- pointer: cursor, tilt cards, magnetic buttons, coin drag/flip, keyboard ---------- */
+const fine = matchMedia("(pointer: fine)").matches; if (fine) document.body.classList.add("fine");
+const cur = $("#cur"), curlab = $("#curlab"); let cx = innerWidth / 2, cy = innerHeight / 2, rx = cx, ry = cy; cur.style.opacity = "0";
+const inSlot = (e) => { const slot = activeSlot(); if (!slot) return null; const r = slot.r, dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); return Math.hypot(dx, dy) < r.width / 2 ? slot : null; };
+addEventListener("pointermove", (e) => {
+  cx = e.clientX; cy = e.clientY; cur.style.opacity = ""; state.pointer.tx = (e.clientX / innerWidth - 0.5) * 2; state.pointer.ty = (e.clientY / innerHeight - 0.5) * -2;
+  if (state.drag) { const dx = e.clientX - state.drag.x; state.drag.x = e.clientX; state.drag.moved += Math.abs(dx); state.spin += dx * 0.012; state.spinV = dx * 0.6; return; }
+  const hot = e.target.closest("[data-cursor], a, button, input, textarea, .demo, .timeline li, .cmp .li"); const slot = !hot && inSlot(e);
+  cur.classList.toggle("hot", !!hot || !!slot); curlab.textContent = slot ? "Drag · flip" : (hot?.closest?.("[data-cursor]")?.dataset.cursor || (hot ? "Open" : ""));
+}, { passive: true });
+addEventListener("pointerleave", () => { state.pointer.tx = 0; state.pointer.ty = 0; });
+(function curLoop() { rx = lerp(rx, cx, 0.22); ry = lerp(ry, cy, 0.22); cur.style.transform = `translate(${rx}px, ${ry}px)`; requestAnimationFrame(curLoop); })();
+document.addEventListener("pointerdown", (e) => { const b = e.target.closest(".btn"); if (b) { b.classList.add("press"); setTimeout(() => b.classList.remove("press"), 160); } if (e.target.closest("a, button, input, textarea, .demo, .app, .board")) return; const slot = inSlot(e); if (slot) { state.drag = { x: e.clientX, moved: 0 }; } });
+addEventListener("pointerup", () => { if (!state.drag) return; const d = state.drag; state.drag = null; if (d.moved < 6) flipCoin(); else discover("drag"); });
+function flipCoin() { state.flipV = 9; sfx.coin(); discover("flip"); if (state.page === "home") window.__gate?.ripple(); const toss = $("#toss"); if (toss && state.page === "home") { toss.textContent = Math.random() > 0.5 ? "HEADS · +10" : "TAILS · +10"; toss.classList.remove("show"); void toss.offsetWidth; toss.classList.add("show"); } }
+$$(".coin-anchor").forEach((s) => s.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flipCoin(); } if (e.key === "ArrowLeft") { state.spinV = -8; discover("drag"); } if (e.key === "ArrowRight") { state.spinV = 8; discover("drag"); } }));
+if (fine) { $$(".btn").forEach((b) => { b.addEventListener("pointermove", (e) => { const r = b.getBoundingClientRect(); b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.12}px, ${(e.clientY - r.top - r.height / 2) * 0.2}px)`; }); b.addEventListener("pointerleave", () => (b.style.transform = "")); });
+  $$(".tilt").forEach((c) => { c.addEventListener("pointermove", (e) => { const r = c.getBoundingClientRect(); c.style.setProperty("--ry", ((e.clientX - r.left) / r.width - 0.5) * 6 + "deg"); c.style.setProperty("--rx", ((e.clientY - r.top) / r.height - 0.5) * -6 + "deg"); }); c.addEventListener("pointerleave", () => { c.style.setProperty("--rx", "0deg"); c.style.setProperty("--ry", "0deg"); }); }); }
+document.addEventListener("mouseenter", (e) => { if (e.target instanceof Element && e.target.matches?.("a, button")) sfx.tick(); }, true);
+let lastY = scrollY; addEventListener("scroll", () => { state.scrollV = scrollY - lastY; lastY = scrollY; const h = document.documentElement.scrollHeight - innerHeight; $("#prog").style.setProperty("--p", h > 0 ? clamp(scrollY / h, 0, 1) : 0); }, { passive: true });
+
+/* ======================================================================
+   6. Boot
+   ====================================================================== */
+async function boot() {
+  try { await Promise.race([Promise.all([document.fonts.load('600 40px "Hanken Grotesk"'), document.fonts.load('600 20px "Caveat"')]), new Promise((r) => setTimeout(r, 2500))]); } catch (e) {}
+  try { buildScene(); } catch (e) { console.warn("WebGL unavailable", e); canvas.classList.add("off"); }
+  const faceCanvas = textures ? textures.color : colorMap(1024, PALETTES.onyx); const small = document.createElement("canvas"); small.width = small.height = 512; small.getContext("2d").drawImage(faceCanvas, 0, 0, 512, 512); faceURL = small.toDataURL("image/png"); paintFaces();
+  if (!state.webgl) { $$(".coin-anchor").forEach((s) => { const img = document.createElement("img"); img.src = faceURL; img.alt = "The Portal Rewards coin"; img.className = "coin2d"; s.appendChild(img); }); }
+  buildBoard(); fromHash(); renderNav(); watchReveal();
+  if (state.webgl) { resize(); requestAnimationFrame(frame); }
+}
+addEventListener("resize", () => { resize(); watchReveal(); });
+boot();
+</script>
+
+</body>
+</html>
