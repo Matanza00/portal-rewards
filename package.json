@@ -1,0 +1,15 @@
+{
+  "name": "portal-rewards",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal Rewards: a single-page 3D landing experience for a scan-to-earn loyalty coin.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:gate": "node -e \"process.env.PORTAL='gate'; import('./build.mjs')\"",
+    "dev": "node build.mjs && npx --yes serve dist -l 3000"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
